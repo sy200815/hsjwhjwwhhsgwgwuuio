@@ -778,6 +778,8 @@ body, html {
 
 .chat-content {
     flex: 1;
+    height: 0;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -785,6 +787,7 @@ body, html {
     padding-bottom: 100px;
     position: relative;
     z-index: 1;
+    -webkit-overflow-scrolling: touch;
 }
 
 #tab-moments {
@@ -936,8 +939,12 @@ body, html {
 /* ===== 朋友圈页面样式重构 ===== */
 .moments-page {
     background-color: #ffffff !important;
-    padding: 0 !important;
+    padding: 0 0 120px 0 !important;
     position: relative;
+    height: 0;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+    display: none; /* 默认隐藏，由 JS 动态控制显示为 block，避免干扰其他页面 */
 }
 
 /* 全屏背景图 */
@@ -1043,7 +1050,7 @@ body, html {
 .moments-feed {
     position: relative;
     z-index: 1;
-    padding: 0 0 120px 0;
+    padding: 0 0 20px 0;
     background: #ffffff;
 }
 
@@ -1574,50 +1581,50 @@ body, html {
 
 /* iOS iMessage 气泡样式 */
 .msg-bubble {
-    padding: 6px 12px; /* 减小内边距，更显紧凑精致 */
+    padding: 10px 14px; /* 适度增大内边距，更显圆润 */
     font-size: 15px;
     line-height: 1.4;
     position: relative;
     word-break: break-word;
     white-space: pre-wrap;
     font-family: "Noto Sans SC", "Source Han Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    box-shadow: none;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.15), 0 1px 3px rgba(0, 0, 0, 0.02); /* 极低强度的浅白色发光阴影 + 微弱底阴影 */
 }
 
-/* 对方气泡 (iOS 浅灰) */
+/* 对方气泡 (iOS 浅灰) - 圆滚滚左下角带小尖角 */
 .message-item.assistant .msg-bubble, .message-item.system .msg-bubble {
     background-color: #e5e5ea;
     color: #000;
-    border-radius: 20px;
+    border-radius: 24px 24px 24px 6px;
     margin-left: 6px;
     border: none;
 }
 .message-item.assistant .msg-bubble.bubble-top, .message-item.assistant .msg-bubble.bubble-top > div, .message-item.system .msg-bubble.bubble-top, .message-item.system .msg-bubble.bubble-top > div {
-    border-radius: 20px 20px 20px 4px !important;
+    border-radius: 24px 24px 24px 6px !important;
 }
 .message-item.assistant .msg-bubble.bubble-middle, .message-item.assistant .msg-bubble.bubble-middle > div, .message-item.system .msg-bubble.bubble-middle, .message-item.system .msg-bubble.bubble-middle > div {
-    border-radius: 4px 20px 20px 4px !important;
+    border-radius: 24px 24px 24px 6px !important;
 }
 .message-item.assistant .msg-bubble.bubble-bottom, .message-item.assistant .msg-bubble.bubble-bottom > div, .message-item.system .msg-bubble.bubble-bottom, .message-item.system .msg-bubble.bubble-bottom > div {
-    border-radius: 4px 20px 20px 20px !important;
+    border-radius: 24px 24px 24px 6px !important;
 }
 
-/* 我方气泡 (iOS 蓝) */
+/* 我方气泡 (iOS 蓝) - 圆滚滚右下角带小尖角 */
 .message-item.user .msg-bubble {
     background-color: #007aff;
     color: #fff;
-    border-radius: 20px;
+    border-radius: 24px 24px 6px 24px;
     margin-right: 6px;
     border: none;
 }
 .message-item.user .msg-bubble.bubble-top, .message-item.user .msg-bubble.bubble-top > div {
-    border-radius: 20px 20px 4px 20px !important;
+    border-radius: 24px 24px 6px 24px !important;
 }
 .message-item.user .msg-bubble.bubble-middle, .message-item.user .msg-bubble.bubble-middle > div {
-    border-radius: 20px 4px 4px 20px !important;
+    border-radius: 24px 24px 6px 24px !important;
 }
 .message-item.user .msg-bubble.bubble-bottom, .message-item.user .msg-bubble.bubble-bottom > div {
-    border-radius: 20px 4px 20px 20px !important;
+    border-radius: 24px 24px 6px 24px !important;
 }
 
 /* 头像形状控制 */
@@ -1703,19 +1710,21 @@ body, html {
 
 .msg-bubble-menu {
     position: absolute;
-    background: rgba(255, 255, 255, 0.75);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
-    border-radius: 14px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.2);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(20px) saturate(190%);
+    -webkit-backdrop-filter: blur(20px) saturate(190%);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08), 0 0 1px rgba(0,0,0,0.15);
     display: flex;
-    flex-direction: column;
-    width: 180px;
-    padding: 0;
-    gap: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 312px;
+    padding: 8px;
+    gap: 4px;
     transform-origin: center bottom;
     animation: menu-pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     overflow: hidden;
+    justify-content: flex-start;
 }
 
 @keyframes menu-pop {
@@ -1725,31 +1734,29 @@ body, html {
 
 .msg-bubble-menu-item {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 16px;
-    height: 44px;
-    font-size: 15px;
-    font-weight: 400;
-    color: #000;
-    border-radius: 0;
+    justify-content: center;
+    width: 46px;
+    height: 48px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #333;
+    border-radius: 8px;
     cursor: pointer;
     transition: background 0.1s;
     white-space: nowrap;
-    border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
-}
-
-.msg-bubble-menu-item:last-child {
     border-bottom: none;
+    gap: 4px;
 }
 
 .msg-bubble-menu-item iconify-icon {
-    font-size: 18px;
-    opacity: 0.8;
+    font-size: 20px;
+    opacity: 0.9;
 }
 
 .msg-bubble-menu-item:active {
-    background: rgba(0,0,0,0.1);
+    background: rgba(0,0,0,0.06);
 }
 
 .msg-bubble-menu-item.text-danger {
@@ -1916,15 +1923,13 @@ body, html {
     width: 56px;
     height: 56px;
     border-radius: 50%;
-    background: #f5f7fa; /* 浅白色 */
+    background: #f5f7fa; /* 浅灰白扁平底色 */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
-    color: #c7c7cc; /* 很浅的灰色 */
     transition: all 0.15s ease;
     border: none;
-    box-shadow: none;
+    box-shadow: none !important; /* 强制去除一切阴影 */
 }
 
 .more-item:active .more-icon {
@@ -3337,15 +3342,21 @@ body, html {
                 <div id="emote-panel" class="emote-panel" style="display: none;"></div>
                 <div id="more-panel" class="more-panel" style="display: none;">
                     <div class="more-item" onclick="sendVirtualImage()">
-                        <div class="more-icon"><iconify-icon icon="ph:image-square-duotone"></iconify-icon></div>
+                        <div class="more-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" style="display: block;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        </div>
                         <div class="more-text">发文字图</div>
                     </div>
                                         <div class="more-item" onclick="document.getElementById('realImageInput').click()">
-                        <div class="more-icon"><iconify-icon icon="ph:camera-duotone"></iconify-icon></div>
+                        <div class="more-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" style="display: block;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        </div>
                         <div class="more-text">发相册图</div>
                     </div>
                     <div class="more-item" onclick="initiateTransfer()">
-                        <div class="more-icon"><iconify-icon icon="ph:currency-cny-bold"></iconify-icon></div>
+                        <div class="more-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" style="display: block;"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        </div>
                         <div class="more-text">转账</div>
                     </div>
                                         <input type="file" id="realImageInput" accept="image/png, image/jpeg, image/jpg, image/gif, image/*" style="position:absolute; width:0; height:0; opacity:0; z-index:-1;" onchange="handleRealImageUpload(event)">
@@ -3399,21 +3410,29 @@ body, html {
                 <!-- 消息长按菜单 -->
         <div id="msg-menu" class="msg-bubble-menu-overlay" style="display: none;" onclick="closeMsgMenu(event)">
             <div id="msg-menu-box" class="msg-bubble-menu">
+                <div class="msg-bubble-menu-item" onclick="actionCopyMsg()">
+                    <iconify-icon icon="ph:copy"></iconify-icon>
+                    <span>复制</span>
+                </div>
+                <div class="msg-bubble-menu-item" onclick="actionEditMsg()">
+                    <iconify-icon icon="ph:pencil-simple"></iconify-icon>
+                    <span>编辑</span>
+                </div>
                 <div class="msg-bubble-menu-item" onclick="actionReplyMsg()">
-                    <span>回复</span>
                     <iconify-icon icon="ph:arrow-u-up-left"></iconify-icon>
+                    <span>回复</span>
                 </div>
                 <div class="msg-bubble-menu-item" onclick="actionFavMsg()">
-                    <span>收藏</span>
                     <iconify-icon icon="ph:star"></iconify-icon>
+                    <span>收藏</span>
                 </div>
                 <div class="msg-bubble-menu-item" onclick="actionStartMultiSelect()">
-                    <span>多选</span>
                     <iconify-icon icon="ph:list-checks"></iconify-icon>
+                    <span>多选</span>
                 </div>
                 <div class="msg-bubble-menu-item text-danger" onclick="actionDelMsg()">
-                    <span>删除</span>
                     <iconify-icon icon="ph:trash"></iconify-icon>
+                    <span>删除</span>
                 </div>
             </div>
         </div>
@@ -4966,6 +4985,11 @@ function ensureContactConfig(contact) {
     if (contact.roleBubbleColor === undefined) contact.roleBubbleColor = '#F5F5F5';
                 if (contact.customFontUrl === undefined) contact.customFontUrl = '';
     if (contact.customFontFamily === undefined) contact.customFontFamily = '';
+    if (contact.myTextColor === undefined) contact.myTextColor = '';
+    if (contact.roleTextColor === undefined) contact.roleTextColor = '';
+    if (contact.chatFontSize === undefined) contact.chatFontSize = 15;
+    if (contact.myTransferCover === undefined) contact.myTransferCover = '';
+    if (contact.roleTransferCover === undefined) contact.roleTransferCover = '';
     if (contact.favoriteMessages === undefined) contact.favoriteMessages = [];
         if (contact.avatarLibrary === undefined) contact.avatarLibrary = [];
         if (contact.groupId === undefined) contact.groupId = 'default';
@@ -5310,7 +5334,8 @@ function handleChatMainBgUpload(e) {
 function switchChatTab(tab) {
     state.currentChatTab = tab;
     $$('#view-chat_main .chat-content').forEach(el => el.style.display = 'none');
-    $('#tab-' + tab).style.display = 'flex';
+    // 朋友圈使用 block 布局完美滚动，其他页面使用 flex 布局，确保互不干扰
+    $('#tab-' + tab).style.display = (tab === 'moments') ? 'block' : 'flex';
     
     const actionsContainer = $('#chat-main-actions');
     let actionsHtml = '';
@@ -6082,7 +6107,7 @@ function renderChatRoom() {
         
         const isSameAsPrev = prevMsg && prevMsg.role !== 'system' && msg.role !== 'system' && (isGroup ? (prevMsg.senderId === msg.senderId && prevMsg.role === msg.role) : prevMsg.role === msg.role);
         const isSameAsNext = nextMsg && nextMsg.role !== 'system' && msg.role !== 'system' && (isGroup ? (nextMsg.senderId === msg.senderId && nextMsg.role === msg.role) : nextMsg.role === msg.role);
-        const showAvatar = !isSameAsPrev;
+        const showAvatar = true; // 强制每条气泡旁边都显示头像
         
         if (msg.role === 'system') {
             return `
@@ -6134,13 +6159,20 @@ function renderChatRoom() {
             const statusText = msg.transferStatus === 'accepted' ? '已收款' : (msg.transferStatus === 'rejected' ? '已退回' : '转账给对方');
             const roleStatusText = msg.transferStatus === 'accepted' ? '已收款' : (msg.transferStatus === 'rejected' ? '已退回' : '收到转账');
             
-                        contentStr = `<div class="msg-transfer-bubble ${isProcessed ? 'processed' : ''}" onclick="handleTransferClick('${msg.id}')"><div class="msg-transfer-header"><div class="msg-transfer-icon"><iconify-icon icon="${icon}"></iconify-icon></div><div class="msg-transfer-info"><div class="msg-transfer-amount">¥${msg.amount.toFixed(2)}</div><div class="msg-transfer-remark">${escapeHtml(msg.remark)}</div></div></div><div class="msg-transfer-footer">${isMe ? statusText : roleStatusText}</div></div>`;
+            const cover = isMe ? (chatData.myTransferCover || '') : (chatData.roleTransferCover || '');
+            const coverStyle = cover ? `background-image: url(${cover}); background-size: cover; background-position: center; border: none;` : '';
+            
+            contentStr = `<div class="msg-transfer-bubble ${isProcessed ? 'processed' : ''}" style="${coverStyle}" onclick="handleTransferClick('${msg.id}')"><div class="msg-transfer-header"><div class="msg-transfer-icon"><iconify-icon icon="${icon}"></iconify-icon></div><div class="msg-transfer-info"><div class="msg-transfer-amount">¥${msg.amount.toFixed(2)}</div><div class="msg-transfer-remark">${escapeHtml(msg.remark)}</div></div></div><div class="msg-transfer-footer">${isMe ? statusText : roleStatusText}</div></div>`;
         }
                 else if(msg.type === 'red_packet') {
             const isProcessed = msg.transferStatus === 'finished';
             const icon = isProcessed ? 'ph:envelope-open-fill' : 'ph:envelope-simple-fill';
             const statusText = isProcessed ? '已领完' : '查看红包';
-            contentStr = `<div class="msg-transfer-bubble ${isProcessed ? 'processed' : ''}" style="background-color: #f44336;" onclick="handleRedPacketClick('${msg.id}')"><div class="msg-transfer-header"><div class="msg-transfer-icon"><iconify-icon icon="${icon}"></iconify-icon></div><div class="msg-transfer-info"><div class="msg-transfer-amount">¥${msg.amount.toFixed(2)}</div><div class="msg-transfer-remark">${escapeHtml(msg.remark)}</div></div></div><div class="msg-transfer-footer">${statusText}</div></div>`;
+            
+            const cover = isMe ? (chatData.myTransferCover || '') : (chatData.roleTransferCover || '');
+            const coverStyle = cover ? `background-image: url(${cover}); background-size: cover; background-position: center; border: none;` : `background-color: #f44336;`;
+            
+            contentStr = `<div class="msg-transfer-bubble ${isProcessed ? 'processed' : ''}" style="${coverStyle}" onclick="handleRedPacketClick('${msg.id}')"><div class="msg-transfer-header"><div class="msg-transfer-icon"><iconify-icon icon="${icon}"></iconify-icon></div><div class="msg-transfer-info"><div class="msg-transfer-amount">¥${msg.amount.toFixed(2)}</div><div class="msg-transfer-remark">${escapeHtml(msg.remark)}</div></div></div><div class="msg-transfer-footer">${statusText}</div></div>`;
         }
         else if(msg.type === 'exclusive_red_packet') {
             const isProcessed = msg.transferStatus !== 'pending';
@@ -6154,7 +6186,10 @@ function renderChatRoom() {
             else if (msg.transferStatus === 'rejected') statusText = '已退回';
             else statusText = `发给 ${targetName} 的专属红包`;
             
-            contentStr = `<div class="msg-transfer-bubble ${isProcessed ? 'processed' : ''}" style="background-color: #f44336;" onclick="handleExclusiveRedPacketClick('${msg.id}')"><div class="msg-transfer-header"><div class="msg-transfer-icon"><iconify-icon icon="${icon}"></iconify-icon></div><div class="msg-transfer-info"><div class="msg-transfer-amount">¥${msg.amount.toFixed(2)}</div><div class="msg-transfer-remark">${escapeHtml(msg.remark)}</div></div></div><div class="msg-transfer-footer">${statusText}</div></div>`;
+            const cover = isMe ? (chatData.myTransferCover || '') : (chatData.roleTransferCover || '');
+            const coverStyle = cover ? `background-image: url(${cover}); background-size: cover; background-position: center; border: none;` : `background-color: #f44336;`;
+            
+            contentStr = `<div class="msg-transfer-bubble ${isProcessed ? 'processed' : ''}" style="${coverStyle}" onclick="handleExclusiveRedPacketClick('${msg.id}')"><div class="msg-transfer-header"><div class="msg-transfer-icon"><iconify-icon icon="${icon}"></iconify-icon></div><div class="msg-transfer-info"><div class="msg-transfer-amount">¥${msg.amount.toFixed(2)}</div><div class="msg-transfer-remark">${escapeHtml(msg.remark)}</div></div></div><div class="msg-transfer-footer">${statusText}</div></div>`;
         }
                 else if(msg.type === 'forward_records') {
             const title = `${msg.sourceName} 和 我的聊天记录`;
@@ -6192,19 +6227,20 @@ function renderChatRoom() {
         
                 const myBgColor = chatData.myBubbleColor || '#007aff';
         const roleBgColor = chatData.roleBubbleColor || '#e5e5ea';
-        const myTextColor = getContrastTextColor(myBgColor);
-        const roleTextColor = getContrastTextColor(roleBgColor);
+        const myTextColor = chatData.myTextColor || getContrastTextColor(myBgColor);
+        const roleTextColor = chatData.roleTextColor || getContrastTextColor(roleBgColor);
+        const fontSize = chatData.chatFontSize || 15;
         
         const showTimestamp = !isGroup && chatData.showTimestamp;
         const hideMyAvatar = !isGroup && chatData.hideMyAvatar;
 
         return `
-                <div class="message-item ${msg.role}" data-id="${msg.id}" style="${isSameAsPrev ? 'margin-top: -6px;' : ''}">
+                <div class="message-item ${msg.role}" data-id="${msg.id}" style="">
             ${state.isMultiSelecting ? `<div class="msg-checkbox ${isSelected?'checked':''}" onclick="toggleMsgSelect('${msg.id}')"><iconify-icon ${isSelected?'icon="ph:check-bold" style="font-size: 14px;"':''}></iconify-icon></div>` : ''}
             ${!isMe ? `<div class="msg-avatar-wrap">${avatarStr}${(showTimestamp && showAvatar) ? `<div class="msg-timestamp">${formatMsgTime(msg.timestamp)}</div>` : ''}</div>` : ''}
             <div class="msg-bubble-container" ${isMe && hideMyAvatar ? `style="max-width: calc(100% - 20px);"` : ''}>
                 ${isGroup && !isMe && showAvatar ? `<div style="font-size: 11px; color: #999; margin-bottom: 2px; padding-left: 6px; display: flex; align-items: center; gap: 4px;">${escapeHtml(senderName)}${chatData.titles && chatData.titles[msg.senderId] ? `<span style="background: linear-gradient(135deg, #FFD700, #FFaa00); color: #fff; padding: 0 4px; border-radius: 4px; font-size: 9px; font-weight: bold; transform: scale(0.9); transform-origin: left center;">${escapeHtml(chatData.titles[msg.senderId])}</span>` : ''}</div>` : ''}
-                                <div class="msg-bubble ${bubbleGroupClass} ${msg.type === 'image' || msg.type === 'real_image' ? 'msg-image-bubble' : ''} ${(msg.type === 'transfer' || msg.type === 'red_packet' || msg.type === 'exclusive_red_packet' || msg.type === 'forward_records' || msg.type === 'gift') ? 'msg-transfer-bubble-wrap' : ''}" style="${isMe ? `background-color: ${myBgColor}; color: ${myTextColor};` : `background-color: ${roleBgColor}; color: ${roleTextColor};`}" onmousedown="startPress('${msg.id}', event)" onmouseup="endPress()" onmouseleave="endPress()" ontouchstart="startPress('${msg.id}', event)" ontouchend="endPress()" ontouchcancel="endPress()">${replyStr}${contentStr}</div>
+                                <div class="msg-bubble ${bubbleGroupClass} ${msg.type === 'image' || msg.type === 'real_image' ? 'msg-image-bubble' : ''} ${(msg.type === 'transfer' || msg.type === 'red_packet' || msg.type === 'exclusive_red_packet' || msg.type === 'forward_records' || msg.type === 'gift') ? 'msg-transfer-bubble-wrap' : ''}" style="${isMe ? `background-color: ${myBgColor}; color: ${myTextColor};` : `background-color: ${roleBgColor}; color: ${roleTextColor};`} font-size: ${fontSize}px;" onmousedown="startPress('${msg.id}', event)" onmouseup="endPress()" onmouseleave="endPress()" ontouchstart="startPress('${msg.id}', event)" ontouchend="endPress()" ontouchcancel="endPress()">${replyStr}${contentStr}</div>
             </div>
             ${isMe ? (hideMyAvatar ? '' : `<div class="msg-avatar-wrap">${avatarStr}${(showTimestamp && showAvatar) ? `<div class="msg-timestamp">${formatMsgTime(msg.timestamp)}</div>` : ''}</div>`) : ''}
         </div>`;
@@ -7827,6 +7863,54 @@ function startPress(msgId, event) {
 function endPress() { if(pressTimer) clearTimeout(pressTimer); }
 function closeMsgMenu(e) { if(!e || e.target.id === 'msg-menu') { $('#msg-menu').style.display = 'none'; state.msgMenuObj.msgId = null; } }
 
+async function actionCopyMsg() {
+    const isGroup = state.activeChatType === 'group';
+    const chatData = isGroup ? state.chatGroups.find(g => g.id === state.activeGroupId) : state.contacts.find(c => c.id === state.activeContactId);
+    if (!chatData) return;
+    const msg = chatData.messages.find(m => m.id === state.msgMenuObj.msgId);
+    if (msg) {
+        let copyText = msg.content;
+        if (msg.type === 'virtual_image') copyText = `[图片] ${msg.content}`;
+        
+        try {
+            await navigator.clipboard.writeText(copyText);
+            showToast('已复制到剪贴板');
+        } catch (err) {
+            // 兼容低版本或部分内置浏览器环境
+            const textarea = document.createElement('textarea');
+            textarea.value = copyText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('已复制到剪贴板');
+        }
+    }
+    closeMsgMenu();
+}
+
+async function actionEditMsg() {
+    const isGroup = state.activeChatType === 'group';
+    const chatData = isGroup ? state.chatGroups.find(g => g.id === state.activeGroupId) : state.contacts.find(c => c.id === state.activeContactId);
+    if (!chatData) return;
+    const msg = chatData.messages.find(m => m.id === state.msgMenuObj.msgId);
+    if (msg) {
+        if (msg.type && msg.type !== 'text' && msg.type !== 'virtual_image') {
+            showToast('该类型的消息暂不支持编辑', 'error');
+            closeMsgMenu();
+            return;
+        }
+        closeMsgMenu(); // 提前关闭菜单，避免弹窗层级冲突
+        const newText = await showPromptDialog('编辑消息', msg.content, '请输入修改后的内容');
+        if (newText !== null && newText.trim() !== '') {
+            msg.content = newText.trim();
+            await saveDataSilently();
+            renderChatRoom();
+            showToast('修改成功');
+        }
+    }
+}
+
 function actionReplyMsg() {
     const isGroup = state.activeChatType === 'group';
     const chatData = isGroup ? state.chatGroups.find(g => g.id === state.activeGroupId) : state.contacts.find(c => c.id === state.activeContactId);
@@ -8182,6 +8266,24 @@ function renderChatSettings() {
                     <iconify-icon icon="ph:caret-right-bold" style="color:#d1d1d6; font-size:14px;"></iconify-icon>
                 </div>
             </div>
+
+            <div class="flat-item" onclick="triggerChatUpload('myTransferCover')" style="cursor: pointer;">
+                <div class="flat-icon"><iconify-icon icon="solar:card-transfer-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">我方转账红包封面</div></div>
+                <div class="flat-right">
+                    ${contact.myTransferCover ? `<span onclick="event.stopPropagation(); updateContactProp('myTransferCover', ''); showToast('已恢复默认封面'); renderChatSettings();" style="color:#ff3b30; font-size: 13px; margin-right:8px; font-weight:500;">恢复默认</span>`:''}
+                    <iconify-icon icon="ph:caret-right-bold" style="color:#d1d1d6; font-size:14px;"></iconify-icon>
+                </div>
+            </div>
+
+            <div class="flat-item" onclick="triggerChatUpload('roleTransferCover')" style="cursor: pointer;">
+                <div class="flat-icon"><iconify-icon icon="solar:card-transfer-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">对方转账红包封面</div></div>
+                <div class="flat-right">
+                    ${contact.roleTransferCover ? `<span onclick="event.stopPropagation(); updateContactProp('roleTransferCover', ''); showToast('已恢复默认封面'); renderChatSettings();" style="color:#ff3b30; font-size: 13px; margin-right:8px; font-weight:500;">恢复默认</span>`:''}
+                    <iconify-icon icon="ph:caret-right-bold" style="color:#d1d1d6; font-size:14px;"></iconify-icon>
+                </div>
+            </div>
             
             <div class="flat-item" onclick="openFontSettings()" style="cursor: pointer;">
                 <div class="flat-icon"><iconify-icon icon="solar:text-linear"></iconify-icon></div>
@@ -8215,6 +8317,43 @@ function renderChatSettings() {
                             <input type="color" value="${contact.roleBubbleColor || '#e5e5ea'}" onchange="updateBubbleColor('roleBubbleColor', this.value)" style="width:24px;height:24px;border:none;border-radius:50%;cursor:pointer;padding:0;background:transparent;" />
                         </label>
                     </div>
+                </div>
+            </div>
+
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:text-bold"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">我方字体颜色</div></div>
+                <div class="flat-right">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="text" value="${contact.myTextColor || ''}" placeholder="自动" onchange="handleColorInput('myTextColor', this.value)" style="width:70px; border:none; background:transparent; font-size:13px; color:#8e8e93; outline:none; text-align:right; font-family:inherit; text-transform:uppercase;" />
+                        <label style="cursor:pointer; display:flex; height:24px;">
+                            <input type="color" value="${contact.myTextColor || '#ffffff'}" onchange="updateBubbleColor('myTextColor', this.value)" style="width:24px;height:24px;border:none;border-radius:50%;cursor:pointer;padding:0;background:transparent;" />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:text-bold"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">对方字体颜色</div></div>
+                <div class="flat-right">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <input type="text" value="${contact.roleTextColor || ''}" placeholder="自动" onchange="handleColorInput('roleTextColor', this.value)" style="width:70px; border:none; background:transparent; font-size:13px; color:#8e8e93; outline:none; text-align:right; font-family:inherit; text-transform:uppercase;" />
+                        <label style="cursor:pointer; display:flex; height:24px;">
+                            <input type="color" value="${contact.roleTextColor || '#000000'}" onchange="updateBubbleColor('roleTextColor', this.value)" style="width:24px;height:24px;border:none;border-radius:50%;cursor:pointer;padding:0;background:transparent;" />
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:text-square-bold-duotone"></iconify-icon></div>
+                <div class="flat-info">
+                    <div class="flat-title">对话字体大小</div>
+                    <div class="flat-desc">可设范围：12px - 24px</div>
+                </div>
+                <div class="flat-right">
+                    <input type="number" class="m-input" style="text-align: right; width: 60px; border: none; background: #f5f7fa; padding: 6px 12px; border-radius: 8px; font-size: 13px; margin: 0;" min="12" max="24" value="${contact.chatFontSize || 15}" onchange="updateChatFontSize(parseInt(this.value))" />
                 </div>
             </div>
             
@@ -8308,6 +8447,18 @@ function handleColorInput(prop, val) {
     }
 }
 
+function handleColorInput(prop, val) {
+    val = val.trim();
+    if (!val) return;
+    if (!val.startsWith('#')) val = '#' + val;
+    if (/^#[0-9A-Fa-f]{3}$|^#[0-9A-Fa-f]{6}$/.test(val)) {
+        updateBubbleColor(prop, val);
+    } else {
+        showToast('无效的颜色代码', 'error');
+        if (state.activeChatType === 'group') renderGroupChatSettings(); else renderChatSettings();
+    }
+}
+
 function updateBubbleColor(prop, value) {
     const isGroup = state.activeChatType === 'group';
     const c = isGroup ? state.chatGroups.find(g => g.id === state.activeGroupId) : state.contacts.find(x => x.id === state.activeContactId);
@@ -8338,6 +8489,38 @@ function toggleAutoReply() {
     }
 }
 
+function toggleGroupAutoReply() {
+    const g = state.chatGroups.find(x => x.id === state.activeGroupId);
+    if(g) { 
+        g.autoReplyEnabled = !g.autoReplyEnabled; 
+        saveDataSilently(); 
+        renderGroupChatSettings(); 
+        if (g.autoReplyEnabled) {
+            startGroupAutoReplyTimer(g.id);
+            showToast('已开启群聊主动活跃');
+        } else {
+            if (groupAutoReplyTimers[g.id]) {
+                clearTimeout(groupAutoReplyTimers[g.id]);
+                delete groupAutoReplyTimers[g.id];
+            }
+            showToast('已关闭群聊主动活跃');
+        }
+    }
+}
+
+function updateChatFontSize(val) {
+    if (isNaN(val)) return;
+    if (val < 12) val = 12;
+    if (val > 24) val = 24;
+    const c = state.contacts.find(x => x.id === state.activeContactId);
+    if (c) {
+        c.chatFontSize = val;
+        saveDataSilently();
+        renderChatSettings();
+        if (state.currentView === 'chat_room') renderChatRoom();
+    }
+}
+
 function toggleContactProp(prop) {
     const c = state.contacts.find(x => x.id === state.activeContactId);
     if(c) { c[prop] = !c[prop]; saveDataSilently(); renderChatSettings(); }
@@ -8345,6 +8528,14 @@ function toggleContactProp(prop) {
 function updateContactProp(prop, val) {
     const c = state.contacts.find(x => x.id === state.activeContactId);
     if(c) { c[prop] = val; saveDataSilently(); renderChatSettings(); }
+}
+function toggleGroupChatProp(prop) {
+    const g = state.chatGroups.find(x => x.id === state.activeGroupId);
+    if(g) { g[prop] = g[prop] === false ? true : false; saveDataSilently(); renderGroupChatSettings(); }
+}
+function updateGroupChatProp(prop, val) {
+    const g = state.chatGroups.find(x => x.id === state.activeGroupId);
+    if(g) { g[prop] = val; saveDataSilently(); renderGroupChatSettings(); }
 }
 async function clearChatHistory() {
     if(await showConfirmDialog('清空记录', '确定要清空所有记录和记忆吗？')) {
@@ -8376,6 +8567,11 @@ function triggerChatUpload(field) {
     input.click();
 }
 function clearChatBg(e) { e.stopPropagation(); updateContactProp('chatBackground', ''); showToast('已清除背景'); }
+function clearGroupChatBg(e) {
+    e.stopPropagation();
+    const group = state.chatGroups.find(g => g.id === state.activeGroupId);
+    if (group) { group.chatBackground = ''; saveDataSilently(); renderGroupChatSettings(); showToast('已清除'); }
+}
 
 async function openFontSettings() {
     const c = state.contacts.find(x => x.id === state.activeContactId);
@@ -8962,11 +9158,12 @@ async function testConnection() {
 function saveSettings() {
     state.apiConfig.url = $('#api-url').value.trim();
     state.apiConfig.apiKey = $('#api-key').value.trim();
-        state.apiConfig.model = $('#api-model')?.value.trim() || '';
+    state.apiConfig.model = $('#api-model')?.value.trim() || '';
     let tempVal = parseFloat($('#api-temperature').value);
     state.apiConfig.temperature = isNaN(tempVal) ? 0.6 : tempVal;
-            state.apiConfig.presetId = $('#api-preset-select').value;
-    state.uiConfig.textColor = $('#ui-text-color').value;
+    state.apiConfig.presetId = $('#api-preset-select').value;
+    // 安全保护：若元素不存在则保留当前已选颜色
+    state.uiConfig.textColor = $('#ui-text-color')?.value || state.uiConfig.textColor || '#ffffff';
     
     saveDataSilently().then(()=>showToast('已保存'));
     renderDesktop();
@@ -11965,9 +12162,14 @@ function renderForumSettings() {
             <div class="m-info">
                 <div class="m-title" style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(b.name)}</div>
                 <div class="m-desc">${escapeHtml(b.desc)}</div>
-                <div style="font-size: 11px; color: #007aff; margin-top: 8px;">
-                    绑定 ${b.worldbookIds ? b.worldbookIds.length : 0} 个世界书 · 
-                    限定 ${b.allowedContactIds && b.allowedContactIds.length > 0 ? b.allowedContactIds.length : '全部'} 角色
+                <div style="display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap;">
+                    <div style="font-size: 11px; color: #007aff; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; background: #f2f2f7; padding: 4px 8px; border-radius: 6px;" onclick="bindBoardWorldbooks('${b.id}')">
+                        <iconify-icon icon="solar:link-bold-duotone"></iconify-icon> 
+                        <span>绑定世界书 (${b.worldbookIds ? b.worldbookIds.length : 0}个已绑)</span>
+                    </div>
+                    <div style="font-size: 11px; color: #8e8e93; display: inline-flex; align-items: center; background: #f2f2f7; padding: 4px 8px; border-radius: 6px;">
+                        限定 ${b.allowedContactIds && b.allowedContactIds.length > 0 ? b.allowedContactIds.length : '全部'} 角色
+                    </div>
                 </div>
             </div>
             <div class="m-right" style="align-self: center; display: flex; gap: 12px;">
@@ -12012,13 +12214,6 @@ async function editForumBoard(boardId) {
         board.name = res.val1.trim();
         board.desc = res.val2.trim();
         
-        // 简单实现：通过 prompt 绑定世界书
-        const wbStr = board.worldbookIds ? board.worldbookIds.join(',') : '';
-        const wbRes = await showPromptDialog('绑定世界书 ID (逗号分隔，留空不绑定)', wbStr);
-        if (wbRes !== null) {
-            board.worldbookIds = wbRes.split(',').map(s => s.trim()).filter(s => s);
-        }
-        
         saveDataSilently();
         renderForumSettings();
         showToast('已保存');
@@ -12035,6 +12230,65 @@ async function deleteForumBoard(boardId) {
         state.forumConfig.posts = state.forumConfig.posts.filter(p => p.forumId !== boardId);
         saveDataSilently();
         renderForumSettings();
+    }
+}
+
+function bindBoardWorldbooks(boardId) {
+    const board = state.forumConfig.boards.find(b => b.id === boardId);
+    if (!board) return;
+    if (!state.worldbooks || state.worldbooks.length === 0) {
+        showToast('你还没有创建过世界书，请先去“我的” -> “世界书”中创建', 'error');
+        return;
+    }
+    
+    let html = '<div style="max-height: 260px; overflow-y: auto; text-align: left; display: flex; flex-direction: column; gap: 8px; padding: 10px 0;">';
+    state.worldbooks.forEach(wb => {
+        const isChecked = board.worldbookIds && board.worldbookIds.includes(wb.id);
+        html += `
+        <div class="modern-item" style="padding: 12px; background: #f9f9f9; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin: 0;" onclick="toggleBoardWorldbookSelection('${boardId}', '${wb.id}', this)">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <iconify-icon icon="solar:folder-with-files-bold-duotone" style="color: #ff9500; font-size: 20px;"></iconify-icon>
+                <span style="font-weight: 600; font-size: 14px; color: #111;">${escapeHtml(wb.name)}</span>
+            </div>
+            <div class="msg-checkbox ${isChecked ? 'checked' : ''}" style="margin: 0; width: 20px; height: 20px;">
+                ${isChecked ? '<iconify-icon icon="ph:check-bold" style="font-size: 12px; color: #fff;"></iconify-icon>' : ''}
+            </div>
+        </div>`;
+    });
+    html += '</div>';
+    
+    state.dialog.resolve = async (confirmed) => {
+        if (confirmed) {
+            await saveDataSilently();
+            renderForumSettings();
+            showToast('绑定已更新');
+        }
+    };
+    state.dialog.inputs = [];
+    
+    $('#dialog-title').textContent = `绑定世界书 - ${board.name}`;
+    $('#dialog-body').innerHTML = html;
+    $('#custom-dialog').style.display = 'flex';
+    
+    $('.custom-dialog-footer').innerHTML = `
+        <button class="custom-dialog-btn confirm" style="width: 100%; border-left: none;" onclick="closeDialog(true)">完成</button>
+    `;
+}
+
+function toggleBoardWorldbookSelection(boardId, wbId, element) {
+    const board = state.forumConfig.boards.find(b => b.id === boardId);
+    if (!board) return;
+    if (!board.worldbookIds) board.worldbookIds = [];
+    
+    const checkbox = element.querySelector('.msg-checkbox');
+    if (board.worldbookIds.includes(wbId)) {
+        board.worldbookIds = board.worldbookIds.filter(id => id !== wbId);
+        checkbox.classList.remove('checked');
+        checkbox.innerHTML = '';
+    } else {
+        board.worldbookIds.push(wbId);
+        checkbox.classList.add('checked');
+        checkbox.innerHTML = '<iconify-icon icon="ph:check-bold" style="font-size: 12px; color: #fff;"></iconify-icon>';
     }
 }
 
