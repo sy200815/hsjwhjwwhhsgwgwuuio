@@ -3726,12 +3726,16 @@ body, html {
                 <div class="nav-bar">
                     <div class="back-btn" onclick="switchView(state.lastViewBeforeEmotes === 'profile' ? 'chat_main' : state.lastViewBeforeEmotes)"><iconify-icon icon="ph:caret-left-bold"></iconify-icon></div>
                     <div class="nav-title">个性表情库</div>
-                    <div class="nav-right" style="cursor: pointer; display: flex; align-items: center; justify-content: flex-end;" onclick="createNewEmotePackage()"><iconify-icon icon="ph:plus-bold" style="font-size: 20px; color: #007aff;"></iconify-icon></div>
+                    <div class="nav-right" style="cursor: pointer; display: flex; align-items: center; justify-content: flex-end; gap: 12px;">
+                        <iconify-icon icon="solar:import-bold-duotone" style="font-size: 22px; color: #007aff;" onclick="triggerImportEmotePackage()" title="导入表情包库"></iconify-icon>
+                        <iconify-icon icon="ph:plus-bold" style="font-size: 20px; color: #007aff;" onclick="createNewEmotePackage()"></iconify-icon>
+                    </div>
                 </div>
             </div>
             <div class="modern-settings-content" id="emote-packages-list-container">
                 <!-- 动态渲染 -->
             </div>
+            <input type="file" id="importEmotePackageInput" accept=".json" style="position:absolute; width:0; height:0; opacity:0; z-index:-1;" onchange="handleImportEmotePackage(event)">
         </div>
 
                 <div id="view-chat_settings_emote_detail" class="view-container settings-view" style="display: none;">
@@ -8823,6 +8827,92 @@ async function createNewEmotePackage() {
     }
 }
 
+function triggerImportEmotePackage() {
+    $('#importEmotePackageInput').click();
+}
+
+function handleImportEmotePackage(e) {
+    const f = e.target.files[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+        try {
+            const imported = JSON.parse(ev.target.result);
+            if (!imported.name || !Array.isArray(imported.emotes)) {
+                showToast('无效的表情包格式', 'error');
+                return;
+            }
+            
+            // 生成全新的ID防止冲突
+            const newPkg = {
+                id: 'pkg_' + Date.now() + Math.random().toString(36).substr(2, 5),
+                name: imported.name,
+                emotes: imported.emotes.map(e => ({
+                    id: 'emote_' + Date.now() + Math.random().toString(36).substr(2, 5) + Math.random().toString(36).substr(2, 5),
+                    url: e.url || '',
+                    remark: e.remark || ''
+                }))
+            };
+            
+            if (!state.emotePackages) state.emotePackages = [];
+            state.emotePackages.push(newPkg);
+            await saveDataSilently();
+            renderEmotes();
+            showToast(`表情包【${newPkg.name}】导入成功`);
+        } catch (err) {
+            showToast('解析表情包失败', 'error');
+        }
+    };
+    reader.readAsText(f);
+    e.target.value = '';
+}
+
+async function exportEmotePackage(pkgId) {
+    const pkg = state.emotePackages.find(p => p.id === pkgId);
+    if (!pkg) return;
+    
+    const dataToExport = {
+        name: pkg.name,
+        emotes: pkg.emotes.map(e => ({
+            url: e.url,
+            remark: e.remark
+        }))
+    };
+    
+    const jsonStr = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const filename = `${pkg.name}_表情包.json`;
+    
+    if (navigator.share) {
+        try {
+            const file = new File([blob], filename, { type: 'application/json' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `导出表情包: ${pkg.name}`
+                });
+                showToast('导出(分享)成功');
+                return;
+            }
+        } catch (err) {
+            console.warn('Web Share API 失败或被取消，尝试传统下载', err);
+        }
+    }
+    
+    try {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('导出成功');
+    } catch (err) {
+        showToast('导出失败', 'error');
+    }
+}
+
 function openEmoteDetail(id) { state.currentEmotePackageId = id; switchView('chat_settings_emote_detail'); }
 
 function renderEmoteDetail() {
@@ -8856,6 +8946,10 @@ function renderEmoteDetail() {
         <div class="modern-item" style="cursor: pointer;" onclick="importEmoteUrl()">
             <div class="m-icon" style="background: #5856d6; color: white;"><iconify-icon icon="solar:link-bold-duotone"></iconify-icon></div>
             <div class="m-info"><div class="m-title" style="color: #5856d6;">导入链接</div></div>
+        </div>
+        <div class="modern-item" style="cursor: pointer;" onclick="exportEmotePackage('${pkg.id}')">
+            <div class="m-icon" style="background: #34c759; color: white;"><iconify-icon icon="solar:download-minimalistic-bold-duotone"></iconify-icon></div>
+            <div class="m-info"><div class="m-title" style="color: #34c759;">导出此表情包库</div></div>
         </div>
         <div class="modern-item" style="cursor: pointer;" onclick="deleteCurrentEmotePackage()">
             <div class="m-icon" style="background: #ff3b30; color: white;"><iconify-icon icon="solar:trash-bin-trash-bold-duotone"></iconify-icon></div>
