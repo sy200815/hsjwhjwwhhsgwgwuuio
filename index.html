@@ -6409,7 +6409,7 @@ async function receiveMessage(triggerContext = null, targetContactId = null) {
         const pkg = state.emotePackages.find(p => p.id === contact.roleEmotePackageId);
         if (pkg && pkg.emotes.length > 0) {
             const notes = pkg.emotes.filter(e => e.remark).map(e => e.remark).join('、');
-            if (notes) roleEmotesPrompt = `你的表情包库中有以下表情包：${notes}。你可以单独使用 [表情包: 备注名称] 来发送你的表情包。`;
+            if (notes) roleEmotesPrompt = `\n【你的专属表情包库】\n你拥有以下表情包，它们的备注名称为：${notes}。\n当你想要表达某种情绪时，可以发送表情包。发送时必须【单独成行】且【严格】使用格式：[表情包: 备注名称]（例如：[表情包: 摸头]）。\n【绝对铁律】你只能选择上述给出的备注名称，绝对禁止自己捏造任何不存在的表情包备注！如果不发表情包，就只输出文字，不要带任何表情包指令。`;
         }
     }
     
@@ -6511,7 +6511,7 @@ async function receiveMessage(triggerContext = null, targetContactId = null) {
     const historyCount = (contact.memoryRounds || 10) * 2;
                 const historyMsgs = validMsgs.slice(-historyCount).map(m => {
         let txt = m.content;
-                if (m.type === 'image') txt = `[图片表情包${m.remark ? '，备注：'+m.remark : ''}]`;
+                if (m.type === 'image') txt = `[表情包: ${m.remark || '图片'}]`;
         else if (m.type === 'real_image') txt = `[图片]`;
         else if (m.type === 'virtual_image') txt = `[文字图：${m.content}]`;
                 else if (m.type === 'transfer') {
@@ -6719,7 +6719,6 @@ function parseReplyToMessages(replyText, rolePkgId) {
     
     // 1. 移除 Markdown 代码块（```json ... ``` 或 ``` ... ```）
     replyText = replyText.replace(/```[\w]*\n?([\s\S]*?)```/g, (match, inner) => {
-        // 如果代码块内是 JSON 数组/对象，尝试提取其中的文本内容
         const trimmed = inner.trim();
         if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
             try {
@@ -6731,11 +6730,10 @@ function parseReplyToMessages(replyText, rolePkgId) {
                 }
             } catch(e) {}
         }
-        // 否则直接返回代码块内的纯文本
         return trimmed;
     });
     
-    // 2. 移除独立的 JSON 数组/对象块（AI有时会直接输出JSON而不用代码块包裹）
+    // 2. 移除独立的 JSON 数组/对象块
     replyText = replyText.replace(/(?:^|\n)\s*(\[[\s\S]*?\]|\{[\s\S]*?\})\s*(?:\n|$)/g, (match, jsonStr) => {
         try {
             const parsed = JSON.parse(jsonStr.trim());
@@ -6746,45 +6744,62 @@ function parseReplyToMessages(replyText, rolePkgId) {
                 return '\n' + parsed.content + '\n';
             }
         } catch(e) {}
-        return match; // 解析失败则保留原文
+        return match;
     });
     
-    // 3. 移除时间戳前缀（如 [14:30] 或 14:30）
+    // 3. 移除时间戳前缀
     replyText = replyText.replace(/^\[\d{1,2}:\d{2}\]\s*/gm, '');
     replyText = replyText.replace(/^\d{1,2}:\d{2}\s*/gm, '');
     
-    // 4. 移除 AI 常见的自我介绍前缀（如 "助手：" "AI：" "回复：" 等）
+    // 4. 移除 AI 常见的自我介绍前缀
     replyText = replyText.replace(/^(助手|AI|assistant|回复|回答|Answer|Response)\s*[:：]\s*/gim, '');
     
-    // 5. 清理多余的空行（超过2个连续空行压缩为1个）
+    // 5. 清理多余的空行
     replyText = replyText.replace(/\n{3,}/g, '\n\n');
     
     replyText = replyText.trim();
     
     const pkg = state.emotePackages.find(p => p.id === rolePkgId);
+    const msgs = [];
     
-            const msgs = [];
-    const regex = /\[(表情包|发起转账):\s*(.*?)\]/g;
+    // 增强正则表达式：支持中英文括号 [ ] 【 】，支持中英文冒号 : ：，支持“图片表情包/表情包/表情”等幻觉词
+    const regex = /[\[【](表情包|图片表情包|表情|发起转账)[:：]\s*(.*?)[\]】]/g;
     let lastIndex = 0, match;
     
     while ((match = regex.exec(replyText)) !== null) {
         if (match.index > lastIndex) {
             const textSeg = replyText.substring(lastIndex, match.index).trim();
-            if (textSeg) textSeg.split(/\n+/).filter(t=>t.trim()).forEach(t => msgs.push({ id: Math.random().toString(), role: 'assistant', content: t.trim() }));
+            if (textSeg) {
+                textSeg.split(/\n+/).filter(t=>t.trim()).forEach(t => {
+                    // 过滤掉AI可能漏网输出的裸露的“图片表情包”等幻觉文本
+                    if (!/^(图片表情包|表情包|\[图片表情包\])$/.test(t.trim())) {
+                        msgs.push({ id: Math.random().toString(), role: 'assistant', content: t.trim() });
+                    }
+                });
+            }
         }
         
         const type = match[1];
         const content = match[2].trim();
         
-        if (type === '表情包') {
-            if (pkg && pkg.emotes) {
-                const emoteMatch = pkg.emotes.find(e => e.remark === content);
-                if (emoteMatch) msgs.push({ id: Math.random().toString(), role: 'assistant', type: 'image', content: emoteMatch.url });
-                else msgs.push({ id: Math.random().toString(), role: 'assistant', content: match[0] });
-            } else {
-                msgs.push({ id: Math.random().toString(), role: 'assistant', content: match[0] });
+        if (type === '表情包' || type === '图片表情包' || type === '表情') {
+            if (pkg && pkg.emotes && pkg.emotes.length > 0) {
+                // 1. 精确匹配
+                let emoteMatch = pkg.emotes.find(e => e.remark === content);
+                
+                // 2. 模糊匹配（防止 AI 脑补，如库里是“摸头”，AI 输出了“摸摸头”）
+                if (!emoteMatch) {
+                    emoteMatch = pkg.emotes.find(e => e.remark && (content.includes(e.remark) || e.remark.includes(content)));
+                }
+                
+                if (emoteMatch) {
+                    msgs.push({ id: Math.random().toString(), role: 'assistant', type: 'image', content: emoteMatch.url, remark: emoteMatch.remark });
+                } else {
+                    // 3. 兜底过滤：如果AI完全捏造了一个库里没有的表情包，直接丢弃该指令，绝不作为文本展示给用户
+                    console.warn(`过滤了AI捏造的表情包: ${content}`);
+                }
             }
-                        } else if (type === '发起转账') {
+        } else if (type === '发起转账') {
             const parts = content.split(',');
             const amount = parseFloat(parts[0]) || 0;
             const remark = parts[1] ? parts[1].trim() : '转账';
@@ -6798,12 +6813,18 @@ function parseReplyToMessages(replyText, rolePkgId) {
             });
         }
         
-        lastIndex = regex.lastIndex + match[0].length;
+        lastIndex = regex.lastIndex;
     }
     
     if (lastIndex < replyText.length) {
         const textSeg = replyText.substring(lastIndex).trim();
-        if (textSeg) textSeg.split(/\n+/).filter(t=>t.trim()).forEach(t => msgs.push({ id: Math.random().toString(), role: 'assistant', content: t.trim() }));
+        if (textSeg) {
+            textSeg.split(/\n+/).filter(t=>t.trim()).forEach(t => {
+                if (!/^(图片表情包|表情包|\[图片表情包\])$/.test(t.trim())) {
+                    msgs.push({ id: Math.random().toString(), role: 'assistant', content: t.trim() });
+                }
+            });
+        }
     }
     return msgs;
 }
