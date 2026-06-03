@@ -2861,7 +2861,7 @@ body, html {
 }
 
 /* 论坛专属样式 */
-.forum-feed { background: #f2f2f7; min-height: 100%; padding-bottom: 80px; }
+.forum-feed { background: #f2f2f7; height: 0; min-height: 0; flex: 1; padding-bottom: 120px; }
 .forum-card { background: #fff; margin-bottom: 8px; padding: 16px; cursor: pointer; transition: background 0.2s; }
 .forum-card:active { background: #f9f9f9; }
 .f-avatar { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: #eee; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #007aff; }
@@ -3546,17 +3546,17 @@ body, html {
 
         <!-- 群聊设置视图 -->
         <div id="view-group_chat_settings" class="view-container settings-view" style="display: none;">
-            <div class="settings-header" style="background: #f2f2f7; border: none;">
+            <div class="settings-header" style="background: #ffffff; border-bottom: 1px solid #f2f2f7; padding-top: max(env(safe-area-inset-top), 24px); padding-bottom: 8px;">
                 <div class="status-bar" style="position: relative;">
                     <div class="time sys-time"></div>
                 </div>
-                <div class="nav-bar">
-                    <div class="back-btn" onclick="switchView('chat_room')"><iconify-icon icon="ph:caret-left-bold"></iconify-icon></div>
-                    <div class="nav-title">聊天信息</div>
-                    <div class="nav-right"></div>
+                <div class="nav-bar" style="height: 64px;">
+                    <div class="back-btn" style="width: 30px; height: 30px; border-radius: 50%; background: #f5f7fa; color: #8e8e93; border: none; box-shadow: none; font-size: 16px;" onclick="switchView('chat_room')"><iconify-icon icon="ph:caret-left-bold"></iconify-icon></div>
+                    <div class="nav-title" style="font-size: 17px; font-weight: 700; color: #000000; letter-spacing: -0.2px;">Group Settings</div>
+                    <div class="nav-right" style="width: 30px;"></div>
                 </div>
             </div>
-            <div class="modern-settings-content" id="group-chat-settings-content"></div>
+            <div class="modern-settings-content" id="group-chat-settings-content" style="background: #ffffff;"></div>
         </div>
 
         <!-- 聊天设置页面视图 -->
@@ -4940,6 +4940,8 @@ async function loadSettings() {
             if (!state.forumConfig.boards) state.forumConfig.boards = [{ id: 'board_default', name: '综合讨论区', desc: '畅所欲言，海纳百川', worldbookIds: [], allowedContactIds: [] }];
             if (!state.forumConfig.posts) state.forumConfig.posts = [];
             if (!state.forumConfig.profile) state.forumConfig.profile = { name: '匿名用户', avatar: '', bio: '这个人很懒，什么都没留下。' };
+            if (!state.forumConfig.profiles) state.forumConfig.profiles = {};
+            if (state.forumConfig.currentPersonaId === undefined) state.forumConfig.currentPersonaId = '';
         }
                 if (data.shopConfig) state.shopConfig = data.shopConfig;
         if (data.inventory) state.inventory = data.inventory;
@@ -6538,7 +6540,7 @@ async function receiveMessage(triggerContext = null, targetContactId = null) {
     }
 
     // 在最后追加一条系统级强制约束，确保模型不会因为上下文过长而遗忘核心规则
-        let forceCheckPrompt = '【系统最后强制校验】请在输出前自我审查：你的回复是否包含“欠收拾、胆子肥了、找打、咬”等不尊重、居高临下、爹味或说教的词汇？是否阴阳怪气？如果是，请立即重写！必须保持平等、尊重、高情商的正常人思维。绝对不要在回复中带上任何时间前缀！请务必在回复最末尾输出 <status>...</status> 标签！';
+        let forceCheckPrompt = '【系统最后强制校验】请在输出前自我审查：你的回复是否包含“欠收拾、胆子肥了、找打、咬”等不尊重、居高临下、爹味或说教的词汇？如果是，请立即重写！必须保持平等、尊重、高情商的正常人思维。绝对不要在回复中带上任何时间前缀！\n\n【状态栏更新铁律】你必须且只能在回复的最末尾输出 <status> 标签，内容为包含 mood, clothing, thoughts, action 的 JSON 格式。例如：\n<status>{"mood": "(o^^o)", "clothing": "日常便服", "thoughts": "有些开心", "action": "正在看手机回复消息"}</status>';
     if (!contact.enableNarrator) {
         forceCheckPrompt += ' 再次确认：当前是纯对话模式，绝对不要输出任何动作/神态/表情描写！';
     }
@@ -6571,12 +6573,37 @@ async function receiveMessage(triggerContext = null, targetContactId = null) {
                 if (data.choices && data.choices[0] && data.choices[0].message) {
             let reply = data.choices[0].message.content;
             
-            // 解析并处理状态栏
-            const statusRegex = /<status>([\s\S]*?)<\/status>/i;
-            const statusMatch = reply.match(statusRegex);
+            // 解析并处理状态栏 (超强容错解析引擎)
+            let statusJsonStr = '';
+            let statusRegex = /<status>([\s\S]*?)<\/status>/i;
+            let statusMatch = reply.match(statusRegex);
+            
             if (statusMatch) {
+                statusJsonStr = statusMatch[1].trim();
+                reply = reply.replace(statusRegex, '').trim();
+            } else {
+                // 容错1：未闭合的 <status> 标签 (例如模型回答被截断或漏写结束标签)
+                let unclosedRegex = /<status>([\s\S]*?)$/i;
+                let unclosedMatch = reply.match(unclosedRegex);
+                if (unclosedMatch) {
+                    statusJsonStr = unclosedMatch[1].trim();
+                    reply = reply.replace(unclosedRegex, '').trim();
+                } else {
+                    // 容错2：完全没有标签，但末尾直接输出了 JSON 块
+                    let endJsonRegex = /(\{[\s\S]*?\})\s*$/;
+                    let endJsonMatch = reply.match(endJsonRegex);
+                    if (endJsonMatch) {
+                        const possibleJson = endJsonMatch[1];
+                        if (possibleJson.includes('mood') || possibleJson.includes('thoughts') || possibleJson.includes('action')) {
+                            statusJsonStr = possibleJson.trim();
+                            reply = reply.replace(endJsonRegex, '').trim();
+                        }
+                    }
+                }
+            }
+
+            if (statusJsonStr) {
                 try {
-                    let statusJsonStr = statusMatch[1].trim();
                     statusJsonStr = statusJsonStr.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
                     const statusData = JSON.parse(statusJsonStr);
                     contact.currentStatus = {
@@ -6589,7 +6616,6 @@ async function receiveMessage(triggerContext = null, targetContactId = null) {
                 } catch(e) {
                     console.error('Failed to parse status JSON', e);
                 }
-                reply = reply.replace(statusRegex, '').trim();
             }
 
             // 解析并处理换头像指令
@@ -7140,18 +7166,26 @@ JSON 格式示例：
         if (Array.isArray(parsedData)) {
             const msgsToAdd = [];
             parsedData.forEach(msg => {
-                if (msg.senderId && msg.content && members.find(c => c.id === msg.senderId)) {
+                const member = members.find(c => c.id === msg.senderId);
+                if (msg.senderId && msg.content && member) {
                     if (group.mutes && group.mutes[msg.senderId] && group.mutes[msg.senderId] > Date.now()) {
                         console.warn(`AI 尝试让被禁言的角色 ${msg.senderId} 发言，已拦截`);
                         return;
                     }
-                    msgsToAdd.push({
-                        id: Date.now().toString() + Math.random().toString().substr(2, 5),
-                        role: 'assistant',
-                        senderId: msg.senderId,
-                        content: msg.content,
-                        type: 'text',
-                        timestamp: Date.now()
+                    // 使用单聊同款的 parseReplyToMessages 进行智能拆分和表情包、转账匹配
+                    const subMsgs = parseReplyToMessages(msg.content, member.roleEmotePackageId);
+                    subMsgs.forEach(sub => {
+                        msgsToAdd.push({
+                            id: Date.now().toString() + Math.random().toString().substr(2, 5),
+                            role: 'assistant',
+                            senderId: msg.senderId,
+                            content: sub.content,
+                            type: sub.type || 'text',
+                            remark: sub.remark || '',
+                            amount: sub.amount,
+                            transferStatus: sub.transferStatus,
+                            timestamp: Date.now()
+                        });
                     });
                 }
             });
@@ -7164,7 +7198,7 @@ JSON 格式示例：
                 
                                 // 解析表情包与禁言指令
                 let finalContent = m.content;
-                let finalType = 'text';
+                let finalType = m.type;
                 
                 // 处理退群指令
                 if (finalContent.includes('[退群]')) {
@@ -7363,21 +7397,7 @@ JSON 格式示例：
                 }
                 finalContent = finalContent.replace(titleRegex, '').trim();
 
-                const emoteMatch = finalContent.match(/^\[表情包:\s*(.*?)\]$/);
-                if (emoteMatch) {
-                    const remark = emoteMatch[1].trim();
-                    const sender = members.find(c => c.id === m.senderId);
-                    if (sender && sender.roleEmotePackageId) {
-                        const pkg = state.emotePackages.find(p => p.id === sender.roleEmotePackageId);
-                        if (pkg) {
-                            const emote = pkg.emotes.find(e => e.remark === remark);
-                            if (emote) {
-                                finalType = 'image';
-                                finalContent = emote.url;
-                            }
-                        }
-                    }
-                } else if (finalContent) {
+                if (finalType === 'text' && finalContent) {
                     const sender = members.find(c => c.id === m.senderId);
                     if (sender && sender.enableAutoTranslate && sender.translateTargetLang) {
                         const trans = await fetchFreeTranslation(finalContent, sender.translateTargetLang);
@@ -8318,6 +8338,25 @@ function renderChatSettings() {
                     <iconify-icon icon="ph:caret-right-bold" style="color:#d1d1d6; font-size:14px;"></iconify-icon>
                 </div>
             </div>
+
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:palette-linear"></iconify-icon></div>
+                <div class="flat-info">
+                    <div class="flat-title">气泡配色预设</div>
+                    <div class="flat-desc">粉白、蓝黄、白绿、黄白等 ins 风格预设</div>
+                </div>
+                <div class="flat-right">
+                    <select class="m-select" onchange="applyBubblePreset(this.value)" style="border: none; background: #f5f7fa; padding: 6px 12px; border-radius: 8px; font-size: 13px;">
+                        <option value="">自定义配色</option>
+                        <option value="sakura">粉白 (樱花少女)</option>
+                        <option value="seaside">蓝黄 (海盐暖阳)</option>
+                        <option value="wechat">白绿 (经典微信)</option>
+                        <option value="yellow">黄白 (浅鹅黄白)</option>
+                        <option value="purple">紫粉 (薰衣草粉)</option>
+                        <option value="default">蓝灰 (系统默认)</option>
+                    </select>
+                </div>
+            </div>
             
             <div class="flat-item">
                 <div class="flat-icon"><iconify-icon icon="solar:chat-round-linear"></iconify-icon></div>
@@ -8481,6 +8520,32 @@ function handleColorInput(prop, val) {
     } else {
         showToast('无效的颜色代码', 'error');
         if (state.activeChatType === 'group') renderGroupChatSettings(); else renderChatSettings();
+    }
+}
+
+const BUBBLE_PRESETS = {
+    default: { myBubbleColor: '#007aff', roleBubbleColor: '#f5f5f5', myTextColor: '#ffffff', roleTextColor: '#111111' },
+    sakura: { myBubbleColor: '#ffb6c1', roleBubbleColor: '#ffffff', myTextColor: '#ffffff', roleTextColor: '#111111' },
+    seaside: { myBubbleColor: '#a0c4ff', roleBubbleColor: '#ffd166', myTextColor: '#ffffff', roleTextColor: '#111111' },
+    wechat: { myBubbleColor: '#95ec69', roleBubbleColor: '#ffffff', myTextColor: '#111111', roleTextColor: '#111111' },
+    yellow: { myBubbleColor: '#fefae0', roleBubbleColor: '#ffffff', myTextColor: '#111111', roleTextColor: '#111111' },
+    purple: { myBubbleColor: '#e2afff', roleBubbleColor: '#ffe3e8', myTextColor: '#ffffff', roleTextColor: '#111111' }
+};
+
+function applyBubblePreset(presetName) {
+    if (!presetName) return;
+    const isGroup = state.activeChatType === 'group';
+    const c = isGroup ? state.chatGroups.find(g => g.id === state.activeGroupId) : state.contacts.find(x => x.id === state.activeContactId);
+    if (c && BUBBLE_PRESETS[presetName]) {
+        const p = BUBBLE_PRESETS[presetName];
+        c.myBubbleColor = p.myBubbleColor;
+        c.roleBubbleColor = p.roleBubbleColor;
+        c.myTextColor = p.myTextColor;
+        c.roleTextColor = p.roleTextColor;
+        saveDataSilently();
+        if (isGroup) renderGroupChatSettings(); else renderChatSettings();
+        if (state.currentView === 'chat_room') renderChatRoom();
+        showToast('已应用气泡配色预设');
     }
 }
 
@@ -11376,9 +11441,32 @@ function switchForumTab(tab) {
     renderForumMain();
 }
 
+function getForumProfileForPersona(personaId) {
+    if (!state.forumConfig.profiles) state.forumConfig.profiles = {};
+    if (!personaId) {
+        if (!state.forumConfig.profile) {
+            state.forumConfig.profile = { name: '匿名用户', avatar: '', bio: '这个人很懒，什么都没留下。' };
+        }
+        return state.forumConfig.profile;
+    }
+    if (!state.forumConfig.profiles[personaId]) {
+        const persona = state.myPersonas.find(p => p.id === personaId);
+        state.forumConfig.profiles[personaId] = {
+            name: persona ? persona.name : '未命名人设',
+            avatar: '',
+            bio: '这个人很懒，什么都没留下。'
+        };
+    }
+    return state.forumConfig.profiles[personaId];
+}
+
 function getForumAuthorInfo(authorId, isAnonymous, authorNameFallback) {
-    if (authorId === 'me') return { name: state.forumConfig.profile.name, avatar: state.forumConfig.profile.avatar, isMe: true };
     if (isAnonymous) return { name: '匿名用户', avatar: '', isAnon: true };
+    if (authorId === 'me' || (authorId && authorId.startsWith('me_'))) {
+        const personaId = authorId === 'me' ? '' : authorId.substring(3);
+        const profile = getForumProfileForPersona(personaId);
+        return { name: profile.name, avatar: profile.avatar, isMe: true, personaId: personaId };
+    }
     
     const contact = state.contacts.find(c => c.id === authorId);
     if (contact) return { name: contact.name, avatar: contact.avatar, isContact: true };
@@ -11448,12 +11536,29 @@ function renderForumBoards() {
     container.innerHTML = html;
 }
 
+function switchForumAccount(personaId) {
+    state.forumConfig.currentPersonaId = personaId;
+    saveDataSilently();
+    renderForumMe();
+}
+
 function renderForumMe() {
     const container = $('#forum-tab-me');
-    const profile = state.forumConfig.profile;
-    const myPosts = state.forumConfig.posts.filter(p => p.authorId === 'me').sort((a,b)=>b.timestamp-a.timestamp);
+    const profile = getForumProfileForPersona(state.forumConfig.currentPersonaId);
+    const currentAuthorId = 'me_' + (state.forumConfig.currentPersonaId || '');
+    const myPosts = state.forumConfig.posts.filter(p => p.authorId === 'me' || p.authorId === currentAuthorId).sort((a,b)=>b.timestamp-a.timestamp);
     
     let html = `
+    <div style="padding: 16px; background: #FAFAFC; border-bottom: 0.5px solid #E5E5EA; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+        <div style="font-size: 13px; font-weight: 700; color: #8E8E93; text-transform: uppercase; letter-spacing: 0.5px;">论坛身份账户：</div>
+        <select class="m-select" style="margin: 0; padding: 6px 32px 6px 12px; font-size: 13px; max-width: 60%;" onchange="switchForumAccount(this.value)">
+            <option value="" ${!state.forumConfig.currentPersonaId ? 'selected' : ''}>默认主账户 (${escapeHtml(getForumProfileForPersona('').name)})</option>
+            ${state.myPersonas.map(p => {
+                const prof = getForumProfileForPersona(p.id);
+                return `<option value="${p.id}" ${state.forumConfig.currentPersonaId === p.id ? 'selected' : ''}>人设: ${escapeHtml(p.name)} (${escapeHtml(prof.name)})</option>`;
+            }).join('')}
+        </select>
+    </div>
     <div class="f-profile-header">
         <div class="f-avatar" style="width: 72px; height: 72px; font-size: 32px;" onclick="document.getElementById('forumMyAvatarInput').click()">
             ${profile.avatar ? `<img src="${profile.avatar}" />` : `<iconify-icon icon="solar:user-rounded-bold"></iconify-icon>`}
@@ -11478,16 +11583,31 @@ function renderForumMe() {
 function handleForumMyAvatarUpload(e) {
     const f = e.target.files[0]; if(!f) return;
     const reader = new FileReader();
-    reader.onload = ev => { state.forumConfig.profile.avatar = ev.target.result; saveDataSilently(); renderForumMe(); };
+    reader.onload = ev => { 
+        const profile = getForumProfileForPersona(state.forumConfig.currentPersonaId);
+        profile.avatar = ev.target.result; 
+        saveDataSilently(); 
+        renderForumMe(); 
+    };
     reader.readAsDataURL(f); e.target.value = '';
 }
 async function editForumProfileName() {
-    const name = await showPromptDialog('修改昵称', state.forumConfig.profile.name);
-    if(name && name.trim()) { state.forumConfig.profile.name = name.trim(); saveDataSilently(); renderForumMe(); }
+    const profile = getForumProfileForPersona(state.forumConfig.currentPersonaId);
+    const name = await showPromptDialog('修改昵称', profile.name);
+    if(name && name.trim()) { 
+        profile.name = name.trim(); 
+        saveDataSilently(); 
+        renderForumMe(); 
+    }
 }
 async function editForumProfileBio() {
-    const bio = await showPromptDialog('修改签名', state.forumConfig.profile.bio);
-    if(bio !== null) { state.forumConfig.profile.bio = bio.trim(); saveDataSilently(); renderForumMe(); }
+    const profile = getForumProfileForPersona(state.forumConfig.currentPersonaId);
+    const bio = await showPromptDialog('修改签名', profile.bio);
+    if(bio !== null) { 
+        profile.bio = bio.trim(); 
+        saveDataSilently(); 
+        renderForumMe(); 
+    }
 }
 
 async function fetchForumPosts(boardId = null) {
@@ -11732,11 +11852,12 @@ async function sendForumComment() {
     const post = state.forumConfig.posts.find(p => p.id === state.currentForumPostId);
     if (!post) return;
     
+    const currentProfile = getForumProfileForPersona(state.forumConfig.currentPersonaId);
     if (!post.comments) post.comments = [];
     post.comments.push({
         id: 'cmt_' + Date.now(),
-        authorId: 'me',
-        authorName: state.forumConfig.profile.name,
+        authorId: 'me_' + (state.forumConfig.currentPersonaId || ''),
+        authorName: currentProfile.name,
         isAnonymous: false,
         content: text,
         timestamp: Date.now()
@@ -11761,11 +11882,12 @@ async function replyToForumComment(postId, commentId, replyToName, replyToAuthor
     if(text && text.trim()) {
         const post = state.forumConfig.posts.find(p => p.id === postId);
         if(post) {
+            const currentProfile = getForumProfileForPersona(state.forumConfig.currentPersonaId);
             if (!post.comments) post.comments = [];
             post.comments.push({
                 id: 'cmt_' + Date.now(),
-                authorId: 'me',
-                authorName: state.forumConfig.profile.name,
+                authorId: 'me_' + (state.forumConfig.currentPersonaId || ''),
+                authorName: currentProfile.name,
                 isAnonymous: false,
                 content: text.trim(),
                 replyToId: commentId,
@@ -11776,7 +11898,7 @@ async function replyToForumComment(postId, commentId, replyToName, replyToAuthor
             renderForumPostDetail();
             
             // 触发 AI 回复
-            if(replyToAuthorId !== 'me') {
+            if(replyToAuthorId !== 'me' && !replyToAuthorId.startsWith('me_')) {
                 triggerForumAICommentReply(post.id, text.trim(), replyToName, replyToAuthorId);
             }
         }
@@ -11882,7 +12004,7 @@ JSON 格式示例：
                         isAnonymous: !!reply.isAnonymous,
                         content: reply.content,
                         replyToId: '',
-                        replyToName: state.forumConfig.profile.name,
+                        replyToName: getForumProfileForPersona(state.forumConfig.currentPersonaId).name,
                         timestamp: Date.now()
                     });
                     await saveDataSilently();
@@ -12130,11 +12252,12 @@ async function submitForumPost() {
         return;
     }
     
+    const currentProfile = getForumProfileForPersona(state.forumConfig.currentPersonaId);
     const newPost = {
         id: 'post_' + Date.now(),
         forumId: boardId,
-        authorId: 'me',
-        authorName: state.forumConfig.profile.name,
+        authorId: 'me_' + (state.forumConfig.currentPersonaId || ''),
+        authorName: currentProfile.name,
         isAnonymous: false,
         title: title,
         content: content,
@@ -12774,7 +12897,7 @@ async function submitCreateGroupChat() {
         memoryRounds: 10,
         avatarShape: 'circle',
         myBubbleColor: '#007aff',
-        roleBubbleColor: '#e5e5ea',
+        roleBubbleColor: '#f5f5f5',
         autoReplyEnabled: false,
         autoReceiveEnabled: true
     };
@@ -12808,134 +12931,177 @@ function renderGroupChatSettings() {
     const members = state.contacts.filter(c => group.memberIds.includes(c.id));
     
     let html = `
-                <div class="modern-group-title">群聊信息</div>
-        <div class="modern-card">
-            <div class="modern-item" onclick="triggerGroupChatUpload('avatar')" style="cursor: pointer;">
-                <div class="m-icon" style="background: #007aff; color: white;"><iconify-icon icon="solar:gallery-bold-duotone"></iconify-icon></div>
-                <div class="m-info"><div class="m-title">群头像</div></div>
-                <div class="m-right">${group.avatar ? `<img src="${group.avatar}" style="width:24px;height:24px;border-radius:6px;object-fit:cover;"/>`:''}<iconify-icon icon="ph:caret-right-bold" style="color:#c7c7cc;"></iconify-icon></div>
+        <div class="flat-settings-container">
+            <div class="flat-group-title">Group Profile (群聊信息)</div>
+            
+            <div class="flat-item" onclick="triggerGroupChatUpload('avatar')" style="cursor: pointer;">
+                <div class="flat-icon"><iconify-icon icon="solar:gallery-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">修改群头像</div></div>
+                <div class="flat-right">
+                    ${group.avatar ? `<img src="${group.avatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;"/>`:''}
+                    <iconify-icon icon="ph:caret-right-bold" style="color:#d1d1d6; font-size:14px;"></iconify-icon>
+                </div>
             </div>
-            <div class="modern-item" onclick="triggerGroupChatUpload('myChatAvatar')" style="cursor: pointer;">
-                <div class="m-icon" style="background: #34c759; color: white;"><iconify-icon icon="solar:user-speak-bold-duotone"></iconify-icon></div>
-                <div class="m-info"><div class="m-title">我在本群的头像</div></div>
-                <div class="m-right">${group.myChatAvatar ? `<img src="${group.myChatAvatar}" style="width:24px;height:24px;border-radius:6px;object-fit:cover;"/>`:''}<iconify-icon icon="ph:caret-right-bold" style="color:#c7c7cc;"></iconify-icon></div>
+            
+            <div class="flat-item" onclick="triggerGroupChatUpload('myChatAvatar')" style="cursor: pointer;">
+                <div class="flat-icon"><iconify-icon icon="solar:user-speak-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">我在本群的头像</div></div>
+                <div class="flat-right">
+                    ${group.myChatAvatar ? `<img src="${group.myChatAvatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover;"/>`:''}
+                    <iconify-icon icon="ph:caret-right-bold" style="color:#d1d1d6; font-size:14px;"></iconify-icon>
+                </div>
             </div>
-            <div class="modern-item" onclick="editGroupChatName()" style="cursor: pointer;">
-                <div class="m-icon" style="background: #ff9500; color: white;"><iconify-icon icon="solar:pen-new-round-bold-duotone"></iconify-icon></div>
-                <div class="m-info"><div class="m-title">群聊名称</div></div>
-                <div class="m-right"><span style="font-size:14px; color:#8e8e93;">${escapeHtml(group.name)}</span><iconify-icon icon="ph:caret-right-bold" style="color:#c7c7cc;"></iconify-icon></div>
+            
+            <div class="flat-item" onclick="editGroupChatName()" style="cursor: pointer;">
+                <div class="flat-icon"><iconify-icon icon="solar:pen-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">修改群聊名称</div></div>
+                <div class="flat-right">
+                    <span style="font-size:13px; color:#8e8e93; margin-right: 4px;">${escapeHtml(group.name)}</span>
+                    <iconify-icon icon="ph:caret-right-bold" style="color:#d1d1d6; font-size:14px;"></iconify-icon>
+                </div>
             </div>
-                        <div class="modern-item" onclick="triggerGroupChatUpload('chatBackground')" style="cursor: pointer;">
-                <div class="m-icon" style="background: #ff2d55; color: white;"><iconify-icon icon="solar:wallpaper-bold-duotone"></iconify-icon></div>
-                <div class="m-info"><div class="m-title">聊天背景</div></div>
-                <div class="m-right">${group.chatBackground ? `<span onclick="clearGroupChatBg(event)" style="color:#ff3b30; font-size: 15px; margin-right:8px;">清除</span>`:''}<iconify-icon icon="ph:caret-right-bold" style="color:#c7c7cc;"></iconify-icon></div>
+            
+            <div class="flat-item" onclick="triggerGroupChatUpload('chatBackground')" style="cursor: pointer;">
+                <div class="flat-icon"><iconify-icon icon="solar:wallpaper-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">群聊背景</div></div>
+                <div class="flat-right">
+                    ${group.chatBackground ? `<span onclick="clearGroupChatBg(event)" style="color:#ff3b30; font-size: 13px; margin-right:8px; font-weight:500;">清除</span>`:''}
+                    <iconify-icon icon="ph:caret-right-bold" style="color:#d1d1d6; font-size:14px;"></iconify-icon>
+                </div>
             </div>
-        </div>
 
-        <div class="modern-group-title">视觉与个性化</div>
-        <div class="modern-card">
-            <div class="modern-item">
-                <div class="m-icon" style="background: #007aff; color: white;"><iconify-icon icon="solar:chat-round-bold-duotone"></iconify-icon></div>
-                <div class="m-info"><div class="m-title">我方气泡颜色</div></div>
-                <div class="m-right">
+            <div class="flat-group-title">Visual & Personalization (视觉与个性化)</div>
+
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:palette-linear"></iconify-icon></div>
+                <div class="flat-info">
+                    <div class="flat-title">气泡配色预设</div>
+                    <div class="flat-desc">粉白、蓝黄、白绿、黄白等 ins 风格预设</div>
+                </div>
+                <div class="flat-right">
+                    <select class="m-select" onchange="applyBubblePreset(this.value)" style="border: none; background: #f5f7fa; padding: 6px 12px; border-radius: 8px; font-size: 13px;">
+                        <option value="">自定义配色</option>
+                        <option value="sakura">粉白 (樱花少女)</option>
+                        <option value="seaside">蓝黄 (海盐暖阳)</option>
+                        <option value="wechat">白绿 (经典微信)</option>
+                        <option value="yellow">黄白 (浅鹅黄白)</option>
+                        <option value="purple">紫粉 (薰衣草粉)</option>
+                        <option value="default">蓝灰 (系统默认)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:chat-round-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">我方气泡颜色</div></div>
+                <div class="flat-right">
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <input type="text" value="${group.myBubbleColor || '#007aff'}" onchange="handleColorInput('myBubbleColor', this.value)" style="width:70px; border:none; background:transparent; font-size:15px; color:#8e8e93; outline:none; text-align:right; font-family:inherit; text-transform:uppercase;" />
-                        <label style="cursor:pointer; display:flex; height:28px;">
-                            <input type="color" value="${group.myBubbleColor || '#007aff'}" onchange="updateBubbleColor('myBubbleColor', this.value)" style="width:28px;height:28px;border:none;border-radius:6px;cursor:pointer;padding:0;background:transparent;" />
+                        <input type="text" value="${group.myBubbleColor || '#007aff'}" onchange="handleColorInput('myBubbleColor', this.value)" style="width:70px; border:none; background:transparent; font-size:13px; color:#8e8e93; outline:none; text-align:right; font-family:inherit; text-transform:uppercase;" />
+                        <label style="cursor:pointer; display:flex; height:24px;">
+                            <input type="color" value="${group.myBubbleColor || '#007aff'}" onchange="updateBubbleColor('myBubbleColor', this.value)" style="width:24px;height:24px;border:none;border-radius:50%;cursor:pointer;padding:0;background:transparent;" />
                         </label>
                     </div>
                 </div>
             </div>
-            <div class="modern-item">
-                <div class="m-icon" style="background: #8e8e93; color: white;"><iconify-icon icon="solar:chat-round-line-duotone"></iconify-icon></div>
-                <div class="m-info"><div class="m-title">对方气泡颜色</div></div>
-                <div class="m-right">
+            
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:chat-round-line-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">对方气泡颜色</div></div>
+                <div class="flat-right">
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <input type="text" value="${group.roleBubbleColor || '#e5e5ea'}" onchange="handleColorInput('roleBubbleColor', this.value)" style="width:70px; border:none; background:transparent; font-size:15px; color:#8e8e93; outline:none; text-align:right; font-family:inherit; text-transform:uppercase;" />
-                        <label style="cursor:pointer; display:flex; height:28px;">
-                            <input type="color" value="${group.roleBubbleColor || '#e5e5ea'}" onchange="updateBubbleColor('roleBubbleColor', this.value)" style="width:28px;height:28px;border:none;border-radius:6px;cursor:pointer;padding:0;background:transparent;" />
+                        <input type="text" value="${group.roleBubbleColor || '#f5f5f5'}" onchange="handleColorInput('roleBubbleColor', this.value)" style="width:70px; border:none; background:transparent; font-size:13px; color:#8e8e93; outline:none; text-align:right; font-family:inherit; text-transform:uppercase;" />
+                        <label style="cursor:pointer; display:flex; height:24px;">
+                            <input type="color" value="${group.roleBubbleColor || '#f5f5f5'}" onchange="updateBubbleColor('roleBubbleColor', this.value)" style="width:24px;height:24px;border:none;border-radius:50%;cursor:pointer;padding:0;background:transparent;" />
                         </label>
                     </div>
                 </div>
             </div>
-            <div class="modern-item">
-                <div class="m-icon" style="background: #34c759; color: white;"><iconify-icon icon="solar:square-bottom-down-bold-duotone"></iconify-icon></div>
-                <div class="m-info"><div class="m-title">头像形状</div></div>
-                <div class="m-right">
-                    <select class="m-select" onchange="updateGroupChatProp('avatarShape', this.value)">
+            
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:square-bottom-down-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">头像形状</div></div>
+                <div class="flat-right">
+                    <select class="m-select" onchange="updateGroupChatProp('avatarShape', this.value)" style="border: none; background: #f5f7fa; padding: 6px 12px; border-radius: 8px; font-size: 13px;">
                         <option value="circle" ${group.avatarShape==='circle'?'selected':''}>圆形</option>
                         <option value="square" ${group.avatarShape==='square'?'selected':''}>圆角方形</option>
                     </select>
                 </div>
             </div>
-        </div>
 
-                <div class="modern-group-title">群成员 (${members.length + 1})</div>
-        <div class="modern-card" style="padding: 16px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                <div style="width: 44px; height: 44px; border-radius: 12px; overflow: hidden; background: #f2f2f7; display: flex; align-items: center; justify-content: center; position: relative;">
-                    ${group.myChatAvatar ? `<img src="${group.myChatAvatar}" style="width:100%;height:100%;object-fit:cover;"/>` : `<div style="color:#007aff; font-weight:bold; font-size:16px;">我</div>`}
-                    <div style="position: absolute; bottom: 0; width: 100%; background: #ff9500; color: #fff; font-size: 9px; text-align: center; padding: 1px 0;">群主</div>
-                </div>
-                <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">我</div>
-            </div>
-            ${members.map(c => {
-                const isAdmin = group.admins && group.admins.includes(c.id);
-                const isMuted = group.mutes && group.mutes[c.id] && group.mutes[c.id] > Date.now();
-                const title = group.titles && group.titles[c.id];
-                return `
-                <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;" onclick="handleGroupMemberClick('${c.id}')">
-                    <div style="width: 44px; height: 44px; border-radius: 12px; overflow: hidden; background: #f2f2f7; display: flex; align-items: center; justify-content: center; position: relative;">
-                        ${c.avatar ? `<img src="${c.avatar}" style="width:100%;height:100%;object-fit:cover; ${isMuted ? 'filter: grayscale(100%); opacity: 0.5;' : ''}"/>` : `<div style="color:#007aff; font-weight:bold; font-size:16px; ${isMuted ? 'filter: grayscale(100%); opacity: 0.5;' : ''}">${escapeHtml(c.name.charAt(0))}</div>`}
-                        ${isAdmin ? `<div style="position: absolute; bottom: 0; width: 100%; background: #34c759; color: #fff; font-size: 9px; text-align: center; padding: 1px 0;">管理员</div>` : ''}
-                        ${isMuted ? `<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff3b30; font-size: 24px;"><iconify-icon icon="solar:forbidden-circle-bold"></iconify-icon></div>` : ''}
+            <div class="flat-group-title">Group Members (群成员 - ${members.length + 1})</div>
+            <div style="background: #fff; padding: 16px 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px 12px; border-bottom: 0.5px solid #f2f2f7;">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: #f2f2f7; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                        ${group.myChatAvatar ? `<img src="${group.myChatAvatar}" style="width:100%;height:100%;object-fit:cover;"/>` : `<div style="color:#007aff; font-weight:bold; font-size:16px;">我</div>`}
+                        <div style="position: absolute; bottom: 0; width: 100%; background: #ff9500; color: #fff; font-size: 8px; text-align: center; padding: 1px 0;">群主</div>
                     </div>
-                                        <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: flex; flex-direction: column; align-items: center;">
-                        ${title ? `<span style="background: linear-gradient(135deg, #FFD700, #FFaa00); color: #fff; padding: 0 4px; border-radius: 4px; font-size: 8px; font-weight: bold; margin-bottom: 2px; transform: scale(0.9);">${escapeHtml(title)}</span>` : ''}
-                        <span>${escapeHtml(c.name)}</span>
+                    <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">我</div>
+                </div>
+                ${members.map(c => {
+                    const isAdmin = group.admins && group.admins.includes(c.id);
+                    const isMuted = group.mutes && group.mutes[c.id] && group.mutes[c.id] > Date.now();
+                    const title = group.titles && group.titles[c.id];
+                    return `
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;" onclick="handleGroupMemberClick('${c.id}')">
+                        <div style="width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: #f2f2f7; display: flex; align-items: center; justify-content: center; position: relative; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                            ${c.avatar ? `<img src="${c.avatar}" style="width:100%;height:100%;object-fit:cover; ${isMuted ? 'filter: grayscale(100%); opacity: 0.5;' : ''}"/>` : `<div style="color:#007aff; font-weight:bold; font-size:16px; ${isMuted ? 'filter: grayscale(100%); opacity: 0.5;' : ''}">${escapeHtml(c.name.charAt(0))}</div>`}
+                            ${isAdmin ? `<div style="position: absolute; bottom: 0; width: 100%; background: #34c759; color: #fff; font-size: 8px; text-align: center; padding: 1px 0;">管理员</div>` : ''}
+                            ${isMuted ? `<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ff3b30; font-size: 24px;"><iconify-icon icon="solar:forbidden-circle-bold"></iconify-icon></div>` : ''}
+                        </div>
+                        <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: flex; flex-direction: column; align-items: center;">
+                            ${title ? `<span style="background: linear-gradient(135deg, #FFD700, #FFaa00); color: #fff; padding: 0 4px; border-radius: 4px; font-size: 8px; font-weight: bold; margin-bottom: 2px; transform: scale(0.9);">${escapeHtml(title)}</span>` : ''}
+                            <span>${escapeHtml(c.name)}</span>
+                        </div>
                     </div>
+                `}).join('')}
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;" onclick="inviteToGroupChat()">
+                    <div style="width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: #f2f2f7; display: flex; align-items: center; justify-content: center; color: #007aff; font-size: 20px; border: 1px dashed #c7c7cc; box-shadow: none;">
+                        <iconify-icon icon="ph:plus-bold"></iconify-icon>
+                    </div>
+                    <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">邀请</div>
                 </div>
-            `}).join('')}
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer;" onclick="inviteToGroupChat()">
-                <div style="width: 44px; height: 44px; border-radius: 12px; overflow: hidden; background: #f2f2f7; display: flex; align-items: center; justify-content: center; color: #007aff; font-size: 24px; border: 1px dashed #c7c7cc;">
-                    <iconify-icon icon="ph:plus-bold"></iconify-icon>
-                </div>
-                <div style="font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">邀请</div>
             </div>
-        </div>
 
-                <div class="modern-group-title">数据与系统</div>
-        <div class="modern-card">
-            <div class="modern-item">
-                <div class="m-icon" style="background: #34c759; color: white;"><iconify-icon icon="solar:forward-bold-duotone"></iconify-icon></div>
-                <div class="m-info">
-                    <div class="m-title">发送后自动接收回复</div>
-                    <div class="m-desc">发送消息后自动触发群员回复</div>
+            <div class="flat-group-title">Data & System (数据与系统)</div>
+            
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:chat-round-linear"></iconify-icon></div>
+                <div class="flat-info">
+                    <div class="flat-title">发送后自动接收回复</div>
+                    <div class="flat-desc">发送消息后自动触发群员回复</div>
                 </div>
-                <div class="m-right"><div class="toggle-switch ${group.autoReceiveEnabled !== false ? 'active' : ''}" onclick="toggleGroupChatProp('autoReceiveEnabled')"></div></div>
-            </div>
-            <div class="modern-item">
-                <div class="m-icon" style="background: #ff2d55; color: white;"><iconify-icon icon="solar:chat-round-line-bold-duotone"></iconify-icon></div>
-                <div class="m-info">
-                    <div class="m-title">群聊主动活跃</div>
-                    <div class="m-desc">每隔1~5分钟随机触发聊天</div>
+                <div class="flat-right">
+                    <div class="toggle-switch ${group.autoReceiveEnabled !== false ? 'active' : ''}" onclick="toggleGroupChatProp('autoReceiveEnabled')"></div>
                 </div>
-                <div class="m-right"><div class="toggle-switch ${group.autoReplyEnabled?'active':''}" onclick="toggleGroupAutoReply()"></div></div>
             </div>
-            <div class="modern-item">
-                <div class="m-icon" style="background: #8e8e93; color: white;"><iconify-icon icon="solar:database-bold-duotone"></iconify-icon></div>
-                <div class="m-info"><div class="m-title">群聊记忆轮数</div></div>
-                <div class="m-right"><input type="number" class="m-input" style="text-align: right; width: 60px;" value="${group.memoryRounds || 10}" onchange="updateGroupChatProp('memoryRounds', parseInt(this.value)||10)" /></div>
+            
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:bell-linear"></iconify-icon></div>
+                <div class="flat-info">
+                    <div class="flat-title">群聊主动活跃</div>
+                    <div class="flat-desc">每隔1~5分钟随机触发聊天</div>
+                </div>
+                <div class="flat-right">
+                    <div class="toggle-switch ${group.autoReplyEnabled?'active':''}" onclick="toggleGroupAutoReply()"></div>
+                </div>
             </div>
-        </div>
+            
+            <div class="flat-item">
+                <div class="flat-icon"><iconify-icon icon="solar:database-linear"></iconify-icon></div>
+                <div class="flat-info"><div class="flat-title">群聊记忆轮数</div></div>
+                <div class="flat-right">
+                    <input type="number" class="m-input" style="text-align: right; width: 60px; border: none; background: #f5f7fa; padding: 6px 12px; border-radius: 8px; font-size: 13px; margin: 0;" value="${group.memoryRounds || 10}" onchange="updateGroupChatProp('memoryRounds', parseInt(this.value)||10)" />
+                </div>
+            </div>
 
-        <div class="modern-group-title">危险操作</div>
-        <div class="modern-card">
-            <div class="modern-item" onclick="clearGroupChatHistory()" style="cursor: pointer; justify-content: center;">
-                <div class="m-title" style="color: #ff3b30;">清空聊天记录</div>
+            <div class="flat-group-title">Danger Zone (危险操作)</div>
+            
+            <div class="flat-item" onclick="clearGroupChatHistory()" style="cursor: pointer; justify-content: center; padding: 18px 0;">
+                <div class="flat-title" style="color: #ff3b30; font-weight: 600;">清空聊天记录</div>
             </div>
-            <div class="modern-item" onclick="deleteGroupChat()" style="cursor: pointer; justify-content: center;">
-                <div class="m-title" style="color: #ff3b30; font-weight: 600;">解散群聊</div>
+            
+            <div class="flat-item" onclick="deleteGroupChat()" style="cursor: pointer; justify-content: center; padding: 18px 0; border-bottom: none;">
+                <div class="flat-title" style="color: #ff3b30; font-weight: 600;">解散群聊</div>
             </div>
         </div>
     `;
