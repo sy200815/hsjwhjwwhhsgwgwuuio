@@ -699,6 +699,8 @@ body, html {
 /* ===== 高仿手账 Timeline 记忆管理样式 ===== */
 .tm-view {
     background-color: #FFFFFF !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 .tm-container {
@@ -6123,18 +6125,18 @@ body, html {
     padding: 0 !important;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     align-items: center;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 .diary-card-container {
     width: 100%;
     max-width: 375px;
-    padding: 24px 16px;
-    flex: 1;
+    padding: 40px 16px 120px 16px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    min-height: min-content;
 }
 
 .diary-pic-card {
@@ -14966,7 +14968,7 @@ function renderDiaryDetail() {
                 <div class="diary-pic-card-back" onclick="switchView('diary_list')">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </div>
-                <div class="diary-pic-card-title">初冬 · 日记</div>
+                <div class="diary-pic-card-title">좋아해</div>
             </div>
             <div class="diary-pic-card-body">
                 <div class="diary-user-row">
