@@ -14211,7 +14211,7 @@ ${CORE_BEHAVIOR_AND_CHAT_STYLE_PROMPT}
                         const res = await fetch(`${baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${state.apiConfig.apiKey}`, 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ model: state.apiConfig.model || 'gpt-3.5-turbo', messages: normalizeMessages(apiMessages), temperature: state.apiConfig.temperature ?? 1, stream: false })
+                                body: JSON.stringify({ model: state.apiConfig.model || 'gpt-3.5-turbo', messages: normalizeMessages(apiMessages), temperature: 1, stream: false })
             });
             if (res.ok) {
                 const data = parseAPIResponse(await res.text());
@@ -14284,7 +14284,7 @@ ${CORE_BEHAVIOR_AND_CHAT_STYLE_PROMPT}
                                 body: JSON.stringify({ model: state.apiConfig.model || 'gpt-3.5-turbo', messages: normalizeMessages([
                         {role: 'user', content: prompt},
                         {role: 'system', content: '【系统最后强制校验】请直接输出。'}
-                    ]), temperature: state.apiConfig.temperature ?? 1, stream: false })
+                    ]), temperature: 1, stream: false })
                 });
         if (res.ok) {
             const data = parseAPIResponse(await res.text());
@@ -14354,7 +14354,7 @@ ${CORE_BEHAVIOR_AND_CHAT_STYLE_PROMPT}
                                 body: JSON.stringify({ model: state.apiConfig.model || 'gpt-3.5-turbo', messages: normalizeMessages([
                         {role: 'user', content: prompt},
                         {role: 'system', content: '【系统最后强制校验】如果不想回直接输出 NONE。'}
-                    ]), temperature: state.apiConfig.temperature ?? 1, stream: false })
+                    ]), temperature: 1, stream: false })
                 });
         if (res.ok) {
             const data = parseAPIResponse(await res.text());
@@ -15363,13 +15363,13 @@ ${CORE_BEHAVIOR_AND_CHAT_STYLE_PROMPT}
         state.isBotTyping = true; 
         renderChatRoom();
     }
-    try {
-        let baseUrl = state.apiConfig.url.trim().replace(/\/+$/, '');
-                const res = await fetch(`${baseUrl}/chat/completions`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${state.apiConfig.apiKey}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: state.apiConfig.model || 'gpt-3.5-turbo', messages: normalizeMessages(apiMessages), stream: false })
-        });
+        try {
+            let baseUrl = state.apiConfig.url.trim().replace(/\/+$/, '');
+                        const res = await fetch(`${baseUrl}/chat/completions`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${state.apiConfig.apiKey}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: state.apiConfig.model || 'gpt-3.5-turbo', messages: normalizeMessages(apiMessages), temperature: 1, stream: false })
+            });
         if (!res.ok) throw new Error(`[Status ${res.status}] ${await res.text()}`);
         const data = parseAPIResponse(await res.text());
                 if (data.choices && data.choices[0] && data.choices[0].message) {
@@ -15925,7 +15925,7 @@ JSON 格式示例：
                     { role: 'user', content: prompt },
                     { role: 'system', content: '【系统最后强制校验】请务必直接输出纯JSON数组格式，不要包含任何其他解释性文字，不要使用Markdown代码块包裹。' }
                 ]),
-                temperature: state.apiConfig.temperature ?? 1,
+                temperature: 1,
                 stream: false
             })
         });
@@ -17301,15 +17301,80 @@ function renderChatSettings() {
                                 <div class="toggle-switch ${contact.enableAutoTranslate?'active':''}" onclick="toggleContactProp('enableAutoTranslate')"></div>
                             </div>
                         </div>
-                        <div class="sidebar-submenu-item" style="cursor: default;">
-                            <span>感知现实时间</span>
-                            <div class="toggle-switch ${contact.perceiveTime?'active':''}" onclick="toggleContactProp('perceiveTime')"></div>
-                        </div>
+                                <div class="sidebar-submenu-item" style="cursor: default;">
+                                    <span>感知现实时间</span>
+                                    <div class="toggle-switch ${contact.perceiveTime?'active':''}" onclick="toggleContactProp('perceiveTime')"></div>
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
-                ` : ''}
-            </div>
 
-            <!-- 视觉外观 -->
+                    <!-- 高级智能互动 -->
+                    <div class="menu-item-wrap" style="margin-top: 6px;">
+                        <div class="sidebar-menu-item ${state.chatSettingsExpanded.advanced ? 'active expanded' : ''}" onclick="toggleChatSettingsSec('advanced')">
+                            <span class="menu-icon"><iconify-icon icon="solar:star-linear" style="font-size: 18px;"></iconify-icon></span>
+                            <span class="menu-label">高级智能互动</span>
+                            <span class="menu-arrow"><iconify-icon icon="ph:caret-down-light"></iconify-icon></span>
+                        </div>
+                        ${state.chatSettingsExpanded.advanced ? `
+                            <div class="sidebar-submenu">
+                                <div class="sidebar-submenu-item" onclick="switchView('chat_settings_narrator')">
+                                    <span>旁白自定义规则</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 11px; color:#888;">${contact.narratorPrompts ? contact.narratorPrompts.length : 0} 条规则</span>
+                                        <iconify-icon icon="ph:caret-right-light" style="color:#CCC;"></iconify-icon>
+                                    </div>
+                                </div>
+                                <div class="sidebar-submenu-item" onclick="state.lastViewBeforeEmotes = 'chat_settings'; switchView('chat_settings_emotes')">
+                                    <span>角色表情包库</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 11px; color:#888;">
+                                            ${(() => {
+                                                const pkg = state.emotePackages.find(p => p.id === contact.roleEmotePackageId);
+                                                return pkg ? escapeHtml(pkg.name) : '未启用';
+                                            })()}
+                                        </span>
+                                        <iconify-icon icon="ph:caret-right-light" style="color:#CCC;"></iconify-icon>
+                                    </div>
+                                </div>
+                                <div class="sidebar-submenu-item" style="cursor: default;">
+                                    <span>后台挂机主动呼叫</span>
+                                    <div class="toggle-switch ${contact.bgMsgEnabled?'active':''}" onclick="toggleBackgroundMsg()"></div>
+                                </div>
+                                ${contact.bgMsgEnabled ? `
+                                    <div class="sidebar-submenu-item" style="cursor: default; padding-left: 24px;">
+                                        <span>活跃时间段</span>
+                                        <select onchange="updateContactProp('bgMsgTimeRange', this.value); BackgroundMessenger.scheduleNext('${contact.id}');" style="border: none; background: #F1F3F5; padding: 4px 8px; border-radius: 6px; font-size: 12px; outline: none; -webkit-appearance: none; appearance: none;">
+                                            <option value="daytime" ${contact.bgMsgTimeRange==='daytime'?'selected':''}>日间 (8:00 - 22:00)</option>
+                                            <option value="night" ${contact.bgMsgTimeRange==='night'?'selected':''}>夜间 (22:00 - 4:00)</option>
+                                            <option value="all" ${contact.bgMsgTimeRange==='all'?'selected':''}>全天候</option>
+                                        </select>
+                                    </div>
+                                    <div class="sidebar-submenu-item" style="cursor: default; padding-left: 24px;">
+                                        <span>呼叫频率</span>
+                                        <select onchange="updateContactProp('bgMsgFrequency', this.value); BackgroundMessenger.scheduleNext('${contact.id}');" style="border: none; background: #F1F3F5; padding: 4px 8px; border-radius: 6px; font-size: 12px; outline: none; -webkit-appearance: none; appearance: none;">
+                                            <option value="high" ${contact.bgMsgFrequency==='high'?'selected':''}>高频 (15-30分钟)</option>
+                                            <option value="medium" ${contact.bgMsgFrequency==='medium'?'selected':''}>中频 (1-3小时)</option>
+                                            <option value="low" ${contact.bgMsgFrequency==='low'?'selected':''}>低频 (6-12小时)</option>
+                                        </select>
+                                    </div>
+                                ` : ''}
+                                <div class="sidebar-submenu-item" onclick="switchView('chat_settings_moment_memory')">
+                                    <span>朋友圈记忆配置</span>
+                                    <iconify-icon icon="ph:caret-right-light" style="color:#CCC;"></iconify-icon>
+                                </div>
+                                <div class="sidebar-submenu-item" onclick="switchView('chat_settings_worldbook')">
+                                    <span>绑定世界书设定集</span>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 11px; color:#888;">已绑定 ${contact.worldbookIds ? contact.worldbookIds.length : 0} 个</span>
+                                        <iconify-icon icon="ph:caret-right-light" style="color:#CCC;"></iconify-icon>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- 视觉外观 -->
             <div class="menu-item-wrap" style="margin-top: 6px;">
                 <div class="sidebar-menu-item ${state.chatSettingsExpanded.style ? 'active expanded' : ''}" onclick="toggleChatSettingsSec('style')">
                     <span class="menu-icon"><iconify-icon icon="ph:palette-light"></iconify-icon></span>
@@ -18698,11 +18763,6 @@ function renderSettings() {
                         `<input type="text" id="api-model" class="k-input" style="padding: 6px 0;" placeholder="获取或直接输入模型..." value="${state.apiConfig.model || ''}" onchange="state.apiConfig.model = this.value.trim(); saveDataSilently();" />`
                     }
                 </div>
-                
-                <div class="sidebar-submenu-item" style="flex-direction: column; align-items: stretch; gap: 4px; padding: 12px 16px; background: #FFF; border-radius: 10px; margin-bottom: 6px;">
-                    <span style="font-weight: 600; color: #111;">温度值</span>
-                    <input type="number" id="api-temperature" class="k-input" style="padding: 6px 0;" min="0" max="1" step="0.1" value="${state.apiConfig.temperature ?? 1}" onchange="state.apiConfig.temperature = parseFloat(this.value) || 1; saveDataSilently();" />
-                </div>
 
                 <div class="sidebar-submenu-item" style="padding: 0; margin-bottom: 12px; background: transparent;">
                     <button class="m-btn" onclick="testConnection()" id="btn-test-conn" style="width: 100%; margin-top: 6px; border-radius: 10px;">
@@ -18901,11 +18961,10 @@ function applyApiPreset(id) {
     }
     const preset = state.apiPresets.find(p => p.id === id);
     if (preset) {
-                state.apiConfig.presetId = preset.id;
+        state.apiConfig.presetId = preset.id;
         state.apiConfig.url = preset.url;
         state.apiConfig.apiKey = preset.apiKey;
         state.apiConfig.model = preset.model;
-        if (preset.temperature !== undefined) state.apiConfig.temperature = preset.temperature;
         renderSettings();
     }
 }
@@ -18913,9 +18972,7 @@ function applyApiPreset(id) {
 async function saveApiPreset() {
     const url = $('#api-url').value.trim();
     const apiKey = $('#api-key').value.trim();
-        const model = $('#api-model')?.value.trim() || '';
-        let tempVal = parseFloat($('#api-temperature').value);
-        const temperature = isNaN(tempVal) ? 1 : tempVal;
+    const model = $('#api-model')?.value.trim() || '';
     
     if (!url || !apiKey) {
         showToast('请先填写完整的接口地址和密钥', 'error');
@@ -18934,7 +18991,6 @@ async function saveApiPreset() {
             existing.url = url;
             existing.apiKey = apiKey;
             existing.model = model;
-            existing.temperature = temperature;
             state.apiConfig.presetId = existing.id;
         } else {
             const newPreset = {
@@ -18942,8 +18998,7 @@ async function saveApiPreset() {
                 name: name.trim(),
                 url,
                 apiKey,
-                model,
-                temperature
+                model
             };
             state.apiPresets.push(newPreset);
             state.apiConfig.presetId = newPreset.id;
@@ -18952,7 +19007,6 @@ async function saveApiPreset() {
         state.apiConfig.url = url;
         state.apiConfig.apiKey = apiKey;
         state.apiConfig.model = model;
-        state.apiConfig.temperature = temperature;
         await saveDataSilently();
         renderSettings();
         showToast('已保存预设');
@@ -19010,7 +19064,7 @@ async function testConnection() {
     try {
                             const res = await fetch(`${url.replace(/\/+$/, '')}/chat/completions`, {
                 method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ model: $('#api-model')?.value || 'gpt-3.5-turbo', messages: [{role:'user',content:'Hi'}], temperature: state.apiConfig.temperature ?? 1, stream: false })
+                            body: JSON.stringify({ model: $('#api-model')?.value || 'gpt-3.5-turbo', messages: [{role:'user',content:'Hi'}], temperature: 1, stream: false })
             });
         if(res.ok) showToast('连接成功'); else throw new Error(await res.text());
     } catch(e) { showToast('连接失败: ' + (e.message ? e.message.substring(0, 50) : ''), 'error'); console.error(e); }
@@ -19906,7 +19960,7 @@ async function summarizeMomentMemory(contactId, force = false) {
                     { role: 'user', content: prompt },
                     { role: 'system', content: '【系统最后强制校验】请直接输出。' }
                 ]),
-                temperature: state.apiConfig.temperature ?? 1,
+                temperature: 1,
                 stream: false
             })
         });
@@ -20182,8 +20236,8 @@ async function summarizeMemory(contactId, force = false) {
     ${historyText}`;
 
     try {
-                let baseUrl = state.apiConfig.url.trim().replace(/\/+$/, '');
-        const res = await fetch(`${baseUrl}/chat/completions`, {
+        let baseUrl = state.apiConfig.url.trim().replace(/\/+$/, '');
+                const res = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${state.apiConfig.apiKey}`, 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
@@ -20192,7 +20246,7 @@ async function summarizeMemory(contactId, force = false) {
                     { role: 'user', content: prompt },
                     { role: 'system', content: '【系统最后强制校验】请直接输出。' }
                 ]),
-                temperature: state.apiConfig.temperature ?? 1
+                temperature: 1
             })
         });
         if (!res.ok) {
@@ -20843,7 +20897,7 @@ async function tryTriggerRoleDiary(contact) {
         return `${m.role === 'user' ? '我' : contact.name}: ${txt}`;
     }).join('\n');
 
-        const prompt = `你是${contact.name}。你的性格和设定是：${contact.persona}。${wbPrompt}${memoryPrompt}
+        const prompt = `你是${contact.name}。你的性格和设定 is：${contact.persona}。${wbPrompt}${memoryPrompt}
 ${STRICT_REALISM_PROMPT}
 
 【核心任务】
@@ -20889,7 +20943,7 @@ SAFEGUARD CHECK: Before outputting, scan for asterisks (*), excessive adjectives
                     { role: 'user', content: prompt },
                                         { role: 'system', content: '【系统最后强制校验】请直接输出正文。' }
                 ]),
-                temperature: state.apiConfig.temperature ?? 1,
+                temperature: 1,
                 stream: false
             })
         });
@@ -21209,6 +21263,7 @@ JSON 必须是一个数组，数组中每个对象包含以下字段：
             body: JSON.stringify({ 
                 model: state.apiConfig.model || 'gpt-3.5-turbo', 
                 messages: normalizeMessages([{ role: 'user', content: prompt }]),
+                temperature: 1,
                 stream: false
             })
         });
@@ -21542,13 +21597,13 @@ JSON 格式示例：
 
     try {
         let baseUrl = state.apiConfig.url.trim().replace(/\/+$/, '');
-        const res = await fetch(`${baseUrl}/chat/completions`, {
+                const res = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${state.apiConfig.apiKey}`, 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                 model: state.apiConfig.model || 'gpt-3.5-turbo', 
                 messages: normalizeMessages([{ role: 'user', content: prompt }]),
-                temperature: state.apiConfig.temperature ?? 1
+                temperature: 1
             })
         });
         
@@ -22089,7 +22144,7 @@ JSON 格式示例：
     "likes": 12,
     "comments": [
       {
-        "authorId": "已知角色ID或 'npc_random'",
+        "authorId": "已知角色ID or 'npc_random'",
         "authorName": "评论人名字",
         "isAnonymous": false,
         "content": "评论的具体内容"
@@ -22105,7 +22160,8 @@ JSON 格式示例：
             headers: { 'Authorization': `Bearer ${state.apiConfig.apiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 model: state.apiConfig.model || 'gpt-3.5-turbo', 
-                messages: normalizeMessages([{ role: 'user', content: prompt }])
+                messages: normalizeMessages([{ role: 'user', content: prompt }]),
+                temperature: 1
             })
         });
         
